@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0b0e1a;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Status badge styles */
+.badge {
+  @apply px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap;
+}
+.badge-success {
+  @apply bg-emerald-500/15 text-emerald-400;
+}
+.badge-warning {
+  @apply bg-amber-500/15 text-amber-400;
+}
+.badge-error {
+  @apply bg-red-500/15 text-red-400;
+}
+.badge-info {
+  @apply bg-blue-500/15 text-blue-400;
+}
+.badge-neutral {
+  @apply bg-slate-500/15 text-slate-400;
+}
