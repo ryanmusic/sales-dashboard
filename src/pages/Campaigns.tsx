@@ -35,6 +35,9 @@ export default function Campaigns() {
   const [loadingReservations, setLoadingReservations] = useState<string | null>(null);
   const [editingExpiry, setEditingExpiry] = useState<string | null>(null);
   const [newExpiry, setNewExpiry] = useState('');
+  const [editingCampaignEnd, setEditingCampaignEnd] = useState<string | null>(null);
+  const [newCampaignEnd, setNewCampaignEnd] = useState('');
+  const [showRejected, setShowRejected] = useState<Set<string>>(new Set());
 
   const fetchCampaigns = async (p: number, s: string, status?: string) => {
     const filter = status !== undefined ? status : statusFilter;
@@ -77,6 +80,27 @@ export default function Campaigns() {
       setReservations((prev) => ({ ...prev, [campaignId]: res }));
       setEditingExpiry(null);
       setNewExpiry('');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateCampaignEnd = async (campaignId: string) => {
+    if (!newCampaignEnd) return;
+    try {
+      await api.campaigns.updateCampaign(campaignId, new Date(newCampaignEnd).toISOString());
+      // Update local data
+      setData((prev: any) => ({
+        ...prev,
+        campaigns: prev.campaigns.map((c: any) =>
+          c.id === campaignId ? { ...c, endTimestamp: new Date(newCampaignEnd).toISOString() } : c,
+        ),
+        expiring: (prev.expiring || []).map((c: any) =>
+          c.id === campaignId ? { ...c, endTimestamp: new Date(newCampaignEnd).toISOString() } : c,
+        ),
+      }));
+      setEditingCampaignEnd(null);
+      setNewCampaignEnd('');
     } catch (err) {
       console.error(err);
     }
@@ -216,32 +240,54 @@ export default function Campaigns() {
                         <div className="text-sm text-slate-500 py-3 text-center">Loading...</div>
                       ) : campaignReservations.length === 0 ? (
                         <div className="text-sm text-slate-500 py-3 text-center">{t('noReservations')}</div>
-                      ) : (
-                        <table className="text-sm mt-1">
-                          <thead>
-                            <tr className="text-slate-500 text-xs">
-                              <th className="text-left py-1.5 pr-6 font-medium">{t('creatorName')}</th>
-                              <th className="text-left py-1.5 pr-6 font-medium">{t('instagram')}</th>
-                              <th className="text-left py-1.5 pr-6 font-medium">{t('reservationStatus')}</th>
-                              <th className="text-left py-1.5 pr-6 font-medium">{t('reservationExpiry')}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {campaignReservations.map((r: any) => (
-                              <tr key={r.id} className="border-t border-white/5">
-                                <td className="py-1.5 pr-6 text-slate-300 text-xs">{r.creatorName || '—'}</td>
-                                <td className="py-1.5 pr-6 text-slate-400 text-xs">{r.igUsername ? `@${r.igUsername}` : '—'}</td>
-                                <td className="py-1.5 pr-6">
-                                  <span className={`text-xs px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>
-                                    {reservationStatusLabel(r.status)}
-                                  </span>
-                                </td>
-                                <td className="py-1.5 pr-6 text-slate-400 text-xs">{r.expireTimestamp ? formatDate(r.expireTimestamp) : '—'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
+                      ) : (() => {
+                        const rejectedCount = campaignReservations.filter((r: any) => r.status === 'rejected').length;
+                        const showingRejected = showRejected.has(c.id);
+                        const filtered = [...campaignReservations]
+                          .filter((r: any) => showingRejected || r.status !== 'rejected')
+                          .sort((a, b) => (a.status === 'used' ? -1 : b.status === 'used' ? 1 : 0));
+                        return (
+                          <>
+                            <table className="text-sm mt-1">
+                              <thead>
+                                <tr className="text-slate-500 text-xs">
+                                  <th className="text-left py-1.5 pr-6 font-medium">{t('creatorName')}</th>
+                                  <th className="text-left py-1.5 pr-6 font-medium">{t('instagram')}</th>
+                                  <th className="text-left py-1.5 pr-6 font-medium">{t('reservationStatus')}</th>
+                                  <th className="text-left py-1.5 pr-6 font-medium">{t('reservationExpiry')}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {filtered.map((r: any) => (
+                                  <tr key={r.id} className="border-t border-white/5">
+                                    <td className="py-1.5 pr-6 text-slate-300 text-xs whitespace-nowrap">{r.creatorName || '—'}</td>
+                                    <td className="py-1.5 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? `@${r.igUsername}` : '—'}</td>
+                                    <td className="py-1.5 pr-6 whitespace-nowrap">
+                                      <span className={`text-xs px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>
+                                        {reservationStatusLabel(r.status)}
+                                      </span>
+                                    </td>
+                                    <td className="py-1.5 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.expireTimestamp ? formatDate(r.expireTimestamp) : '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            {rejectedCount > 0 && (
+                              <button
+                                onClick={() => setShowRejected(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(c.id)) next.delete(c.id);
+                                  else next.add(c.id);
+                                  return next;
+                                })}
+                                className="mt-2 text-xs text-slate-500 hover:text-slate-400 transition-colors"
+                              >
+                                {showingRejected ? t('hideRejected') : t('showRejected', { count: rejectedCount })}
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -332,7 +378,7 @@ export default function Campaigns() {
                         <div className="text-slate-300 text-[13px]">{c.ownerName || c.ownerEmail || c.ownerPhone || '—'}</div>
                       </td>
                       <td className="py-3 px-4 text-slate-400 text-[13px]">{c.storeName}</td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status] || 'bg-slate-500/15 text-slate-400'}`}>
                           {campaignStatusLabel(c.status)}
                         </span>
@@ -340,10 +386,45 @@ export default function Campaigns() {
                       <td className="py-3 px-4 text-center text-slate-300">
                         {t('slotsUsed', { used: c.currentSlots || 0, total: c.slots })}
                       </td>
-                      <td className="py-3 px-4 text-slate-400 text-[13px] whitespace-nowrap">
-                        {c.startTimestamp ? formatDate(c.startTimestamp) : '—'}
-                        {' — '}
-                        {c.endTimestamp ? formatDate(c.endTimestamp) : '—'}
+                      <td className="py-3 px-4 text-[13px] whitespace-nowrap">
+                        <span className="text-slate-400">{c.startTimestamp ? formatDate(c.startTimestamp) : '—'}</span>
+                        <span className="text-slate-500">{' — '}</span>
+                        {editingCampaignEnd === c.id ? (
+                          <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="datetime-local"
+                              step="900"
+                              value={newCampaignEnd}
+                              onChange={(e) => setNewCampaignEnd(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateCampaignEnd(c.id); if (e.key === 'Escape') setEditingCampaignEnd(null); }}
+                              autoFocus
+                              className="px-2 py-0.5 text-xs bg-white/5 border border-blue-500/50 rounded text-slate-200 w-[170px]"
+                            />
+                            <button
+                              onClick={() => handleUpdateCampaignEnd(c.id)}
+                              className="px-1.5 py-0.5 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30"
+                            >
+                              OK
+                            </button>
+                            <button
+                              onClick={() => setEditingCampaignEnd(null)}
+                              className="px-1.5 py-0.5 text-xs bg-white/5 text-slate-400 rounded hover:bg-white/10"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        ) : (
+                          <span
+                            className="text-slate-400 hover:text-blue-400 cursor-pointer border-b border-dashed border-transparent hover:border-blue-400/50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingCampaignEnd(c.id);
+                              setNewCampaignEnd(c.endTimestamp ? new Date(c.endTimestamp).toISOString().slice(0, 16) : '');
+                            }}
+                          >
+                            {c.endTimestamp ? formatDate(c.endTimestamp) : '—'}
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-right text-slate-300">
                         {c.reqBudgetPerPost ? formatCurrency(parseFloat(c.reqBudgetPerPost)) : '—'}
@@ -365,7 +446,14 @@ export default function Campaigns() {
                             <div className="text-sm text-slate-500 py-4 text-center">Loading...</div>
                           ) : campaignReservations.length === 0 ? (
                             <div className="text-sm text-slate-500 py-4 text-center">{t('noReservations')}</div>
-                          ) : (
+                          ) : (() => {
+                            const rejectedCount = campaignReservations.filter((r: any) => r.status === 'rejected').length;
+                            const showingRejected = showRejected.has(c.id);
+                            const filtered = [...campaignReservations]
+                              .filter((r: any) => showingRejected || r.status !== 'rejected')
+                              .sort((a, b) => (a.status === 'used' ? -1 : b.status === 'used' ? 1 : 0));
+                            return (
+                            <>
                             <table className="text-sm">
                               <thead>
                                 <tr className="text-slate-500 text-xs">
@@ -379,20 +467,21 @@ export default function Campaigns() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {campaignReservations.map((r: any) => (
+                                {filtered.map((r: any) => (
                                   <tr key={r.id} className="border-t border-white/5">
-                                    <td className="py-2 pr-6 text-slate-300">{r.creatorName || '—'}</td>
-                                    <td className="py-2 pr-6 text-slate-400 text-xs">{r.igUsername ? `@${r.igUsername}` : '—'}</td>
-                                    <td className="py-2 pr-6 text-slate-500 text-xs">{r.creatorEmail || r.creatorPhone || '—'}</td>
-                                    <td className="py-2 pr-6">
+                                    <td className="py-2 pr-6 text-slate-300 whitespace-nowrap">{r.creatorName || '—'}</td>
+                                    <td className="py-2 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? `@${r.igUsername}` : '—'}</td>
+                                    <td className="py-2 pr-6 text-slate-500 text-xs whitespace-nowrap">{r.creatorEmail || r.creatorPhone || '—'}</td>
+                                    <td className="py-2 pr-6 whitespace-nowrap">
                                       <span className={`text-xs px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>
                                         {reservationStatusLabel(r.status)}
                                       </span>
                                     </td>
-                                    <td className="py-2 pr-6 text-[13px]">
+                                    <td className="py-2 pr-6 text-[13px] whitespace-nowrap">
                                       {editingExpiry === r.id ? (
                                         <input
                                           type="datetime-local"
+                                          step="900"
                                           value={newExpiry}
                                           onChange={(e) => setNewExpiry(e.target.value)}
                                           onClick={(e) => e.stopPropagation()}
@@ -404,7 +493,7 @@ export default function Campaigns() {
                                         <span className="text-slate-400">{r.expireTimestamp ? formatDate(r.expireTimestamp) : '—'}</span>
                                       )}
                                     </td>
-                                    <td className="py-2 pr-6 text-slate-500 text-xs">
+                                    <td className="py-2 pr-6 text-slate-500 text-xs whitespace-nowrap">
                                       {r.createTimestamp ? formatDate(r.createTimestamp) : '—'}
                                     </td>
                                     <td className="py-2">
@@ -440,7 +529,25 @@ export default function Campaigns() {
                                 ))}
                               </tbody>
                             </table>
-                          )}
+                            {rejectedCount > 0 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowRejected((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(c.id)) next.delete(c.id);
+                                    else next.add(c.id);
+                                    return next;
+                                  });
+                                }}
+                                className="mt-2 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                              >
+                                {showingRejected ? t('hideRejected') : t('showRejected', { count: rejectedCount })}
+                              </button>
+                            )}
+                            </>
+                            );
+                          })()}
                         </td>
                       </tr>
                     )}

@@ -215,6 +215,35 @@ campaignsRoutes.get('/:id/reservations', async (req: Request, res: Response) => 
   }
 });
 
+// Update campaign end date
+campaignsRoutes.patch('/:id', async (req: Request, res: Response) => {
+  try {
+    const { endTimestamp } = req.body;
+    if (!endTimestamp) {
+      return res.status(400).json({ error: 'endTimestamp is required' });
+    }
+
+    const result = await query(`
+      UPDATE "attention-cards"
+      SET "endTimestamp" = $1, "updateTimestamp" = NOW()
+      WHERE id = $2
+      RETURNING id, "endTimestamp"
+    `, [endTimestamp, req.params.id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+
+    // Invalidate cache
+    campaignsInitCache = null;
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Update campaign error:', err);
+    res.status(500).json({ error: 'Failed to update campaign' });
+  }
+});
+
 // Update reservation expiry
 campaignsRoutes.patch('/:campaignId/reservations/:reservationId', async (req: Request, res: Response) => {
   try {

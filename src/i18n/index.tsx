@@ -17,7 +17,7 @@ const I18nContext = createContext<I18nContextType>(null!);
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(() => {
     const saved = localStorage.getItem('dashboard-lang');
-    return (saved === 'zh' ? 'zh' : 'en') as Lang;
+    return (saved === 'en' ? 'en' : 'zh') as Lang;
   });
 
   const setLang = useCallback((l: Lang) => {

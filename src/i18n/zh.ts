@@ -156,6 +156,8 @@ const zh: Translations = {
   ended: '{days} 天前',
   endsToday: '今天',
   remainingSlots: '剩餘名額',
+  showRejected: '顯示 {count} 筆已拒絕',
+  hideRejected: '隱藏已拒絕',
 
   // Subscription labels
   subFree: '免費',

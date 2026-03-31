@@ -179,6 +179,8 @@ const en = {
   ended: '{days}d ago',
   endsToday: 'Today',
   remainingSlots: 'Remaining',
+  showRejected: 'Show {count} rejected',
+  hideRejected: 'Hide rejected',
 
   // Interval
   monthInterval: '{count}mo',
