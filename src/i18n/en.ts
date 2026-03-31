@@ -181,6 +181,18 @@ const en = {
   remainingSlots: 'Remaining',
   showRejected: 'Show {count} rejected',
   hideRejected: 'Hide rejected',
+  campaignDetails: 'Campaign Details',
+  invitationMessage: 'Invitation Message',
+  requirementLabel: 'Requirement',
+  missionRequirement: 'Mission Requirement',
+  productExchangeDesc: 'Product Exchange Details',
+  requiredHashtags: 'Required Hashtags',
+  platforms: 'Platforms',
+  freeProduct: 'Free Product Included',
+  freeProductValue: 'Free Product Value',
+  yes: 'Yes',
+  no: 'No',
+  close: 'Close',
 
   // Interval
   monthInterval: '{count}mo',

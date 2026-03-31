@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { formatCurrency, formatDate } from '../lib/format';
+import { formatCurrency, formatDate, formatDateTime } from '../lib/format';
 import { useI18n } from '../i18n';
 import StatCard from '../components/StatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -31,6 +31,7 @@ export default function Campaigns() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
+  const [expandedExpiring, setExpandedExpiring] = useState<string | null>(null);
   const [reservations, setReservations] = useState<Record<string, any[]>>({});
   const [loadingReservations, setLoadingReservations] = useState<string | null>(null);
   const [editingExpiry, setEditingExpiry] = useState<string | null>(null);
@@ -38,11 +39,12 @@ export default function Campaigns() {
   const [editingCampaignEnd, setEditingCampaignEnd] = useState<string | null>(null);
   const [newCampaignEnd, setNewCampaignEnd] = useState('');
   const [showRejected, setShowRejected] = useState<Set<string>>(new Set());
+  const [detailCampaign, setDetailCampaign] = useState<any | null>(null);
 
   const fetchCampaigns = async (p: number, s: string, status?: string) => {
     const filter = status !== undefined ? status : statusFilter;
     const result = await api.campaigns.list(p, 50, s, filter);
-    setData(result);
+    setData((prev: any) => ({ ...prev, campaigns: result.campaigns, total: result.total }));
     setPage(p);
   };
 
@@ -53,12 +55,7 @@ export default function Campaigns() {
       .finally(() => setLoading(false));
   }, []);
 
-  const toggleCampaign = async (id: string) => {
-    if (expandedCampaign === id) {
-      setExpandedCampaign(null);
-      return;
-    }
-    setExpandedCampaign(id);
+  const loadReservations = async (id: string) => {
     if (!reservations[id]) {
       setLoadingReservations(id);
       try {
@@ -70,6 +67,24 @@ export default function Campaigns() {
         setLoadingReservations(null);
       }
     }
+  };
+
+  const toggleCampaign = async (id: string) => {
+    if (expandedCampaign === id) {
+      setExpandedCampaign(null);
+      return;
+    }
+    setExpandedCampaign(id);
+    await loadReservations(id);
+  };
+
+  const toggleExpiring = async (id: string) => {
+    if (expandedExpiring === id) {
+      setExpandedExpiring(null);
+      return;
+    }
+    setExpandedExpiring(id);
+    await loadReservations(id);
   };
 
   const handleUpdateExpiry = async (campaignId: string, reservationId: string) => {
@@ -178,14 +193,14 @@ export default function Campaigns() {
               const absDays = Math.abs(days);
               const full = (c.currentSlots || 0) >= (c.slots || 0);
               const urgent = !full && (overdue || days <= 3);
-              const isExpanded = expandedCampaign === c.id;
+              const isExpanded = expandedExpiring === c.id;
               const campaignReservations = reservations[c.id] || [];
               return (
                 <div
                   key={c.id}
                   className={`rounded-lg ${
                     full
-                      ? 'bg-emerald-500/5 border border-emerald-500/20'
+                      ? 'bg-emerald-500/15 border border-emerald-500/40'
                       : urgent
                         ? 'bg-red-500/5 border border-red-500/20'
                         : 'bg-white/[0.02] border border-white/5'
@@ -193,7 +208,7 @@ export default function Campaigns() {
                 >
                   <div
                     className="flex items-center justify-between p-3 cursor-pointer"
-                    onClick={() => toggleCampaign(c.id)}
+                    onClick={() => toggleExpiring(c.id)}
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="text-slate-500 text-xs">{isExpanded ? '▾' : '▸'}</span>
@@ -201,6 +216,13 @@ export default function Campaigns() {
                         <div className="flex items-center gap-2">
                           <span className="text-slate-200 font-medium text-sm truncate">{c.title}</span>
                           <span className="text-xs text-slate-500">{c.storeName}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDetailCampaign(c); }}
+                            className="text-slate-500 hover:text-blue-400 transition-colors text-xs"
+                            title={t('campaignDetails')}
+                          >
+                            ⓘ
+                          </button>
                         </div>
                         <div className="text-xs text-slate-500 mt-0.5">
                           {c.ownerName || c.ownerEmail || '—'}
@@ -255,31 +277,77 @@ export default function Campaigns() {
                                   <th className="text-left py-1.5 pr-6 font-medium">{t('instagram')}</th>
                                   <th className="text-left py-1.5 pr-6 font-medium">{t('reservationStatus')}</th>
                                   <th className="text-left py-1.5 pr-6 font-medium">{t('reservationExpiry')}</th>
+                                  <th className="text-left py-1.5 font-medium"></th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {filtered.map((r: any) => (
                                   <tr key={r.id} className="border-t border-white/5">
                                     <td className="py-1.5 pr-6 text-slate-300 text-xs whitespace-nowrap">{r.creatorName || '—'}</td>
-                                    <td className="py-1.5 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? `@${r.igUsername}` : '—'}</td>
+                                    <td className="py-1.5 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? <a href={`https://instagram.com/${r.igUsername}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-blue-400 transition-colors">@{r.igUsername}</a> : '—'}</td>
                                     <td className="py-1.5 pr-6 whitespace-nowrap">
                                       <span className={`text-xs px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>
                                         {reservationStatusLabel(r.status)}
                                       </span>
                                     </td>
-                                    <td className="py-1.5 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.expireTimestamp ? formatDate(r.expireTimestamp) : '—'}</td>
+                                    <td className="py-1.5 pr-6 text-xs whitespace-nowrap">
+                                      {editingExpiry === r.id ? (
+                                        <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                          <input
+                                            type="datetime-local"
+                                            step="900"
+                                            value={newExpiry}
+                                            onChange={(e) => setNewExpiry(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateExpiry(c.id, r.id); if (e.key === 'Escape') setEditingExpiry(null); }}
+                                            autoFocus
+                                            className="px-2 py-0.5 text-xs bg-white/5 border border-blue-500/50 rounded text-slate-200 w-[170px]"
+                                          />
+                                          <button
+                                            onClick={() => handleUpdateExpiry(c.id, r.id)}
+                                            className="px-1.5 py-0.5 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30"
+                                          >
+                                            OK
+                                          </button>
+                                          <button
+                                            onClick={() => setEditingExpiry(null)}
+                                            className="px-1.5 py-0.5 text-xs bg-white/5 text-slate-400 rounded hover:bg-white/10"
+                                          >
+                                            ✕
+                                          </button>
+                                        </span>
+                                      ) : (
+                                        <span className="text-slate-400">{r.expireTimestamp ? formatDateTime(r.expireTimestamp) : '—'}</span>
+                                      )}
+                                    </td>
+                                    <td className="py-1.5 whitespace-nowrap">
+                                      {editingExpiry !== r.id && (r.status === 'booked' || r.status === 'boooked' || r.status === 'pending') && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingExpiry(r.id);
+                                            setNewExpiry(r.expireTimestamp ? new Date(r.expireTimestamp).toISOString().slice(0, 16) : '');
+                                          }}
+                                          className="px-2 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
+                                        >
+                                          {t('updateExpiry')}
+                                        </button>
+                                      )}
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
                             </table>
                             {rejectedCount > 0 && (
                               <button
-                                onClick={() => setShowRejected(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(c.id)) next.delete(c.id);
-                                  else next.add(c.id);
-                                  return next;
-                                })}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowRejected(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(c.id)) next.delete(c.id);
+                                    else next.add(c.id);
+                                    return next;
+                                  });
+                                }}
                                 className="mt-2 text-xs text-slate-500 hover:text-slate-400 transition-colors"
                               >
                                 {showingRejected ? t('hideRejected') : t('showRejected', { count: rejectedCount })}
@@ -371,7 +439,16 @@ export default function Campaigns() {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="text-slate-200 font-medium max-w-[300px] truncate">{c.title}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-200 font-medium max-w-[300px] truncate">{c.title}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDetailCampaign(c); }}
+                            className="text-slate-500 hover:text-blue-400 transition-colors text-xs shrink-0"
+                            title={t('campaignDetails')}
+                          >
+                            ⓘ
+                          </button>
+                        </div>
                         <div className="text-xs text-slate-500">{c.brandName}</div>
                       </td>
                       <td className="py-3 px-4">
@@ -470,7 +547,7 @@ export default function Campaigns() {
                                 {filtered.map((r: any) => (
                                   <tr key={r.id} className="border-t border-white/5">
                                     <td className="py-2 pr-6 text-slate-300 whitespace-nowrap">{r.creatorName || '—'}</td>
-                                    <td className="py-2 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? `@${r.igUsername}` : '—'}</td>
+                                    <td className="py-2 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? <a href={`https://instagram.com/${r.igUsername}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-blue-400 transition-colors">@{r.igUsername}</a> : '—'}</td>
                                     <td className="py-2 pr-6 text-slate-500 text-xs whitespace-nowrap">{r.creatorEmail || r.creatorPhone || '—'}</td>
                                     <td className="py-2 pr-6 whitespace-nowrap">
                                       <span className={`text-xs px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>
@@ -490,7 +567,7 @@ export default function Campaigns() {
                                           className="px-2 py-1 text-xs bg-white/5 border border-blue-500/50 rounded text-slate-200 w-[180px]"
                                         />
                                       ) : (
-                                        <span className="text-slate-400">{r.expireTimestamp ? formatDate(r.expireTimestamp) : '—'}</span>
+                                        <span className="text-slate-400">{r.expireTimestamp ? formatDateTime(r.expireTimestamp) : '—'}</span>
                                       )}
                                     </td>
                                     <td className="py-2 pr-6 text-slate-500 text-xs whitespace-nowrap">
@@ -585,6 +662,125 @@ export default function Campaigns() {
           </div>
         )}
       </div>
+
+      {/* Campaign Detail Modal */}
+      {detailCampaign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setDetailCampaign(null)}>
+          <div className="bg-navy-900 border border-white/10 rounded-xl w-full max-w-7xl max-h-[80vh] overflow-y-auto mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-200">{t('campaignDetails')}</h3>
+              <button onClick={() => setDetailCampaign(null)} className="text-slate-500 hover:text-slate-300 text-lg">✕</button>
+            </div>
+
+            {/* Top info grid */}
+            <div className="grid grid-cols-4 gap-6 mb-6">
+              <div className="col-span-2">
+                <div className="text-xs text-slate-500 mb-1">{t('campaignTitle')}</div>
+                <div className="text-slate-200 font-medium">{detailCampaign.title}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500 mb-1">{t('store')}</div>
+                <div className="text-slate-300 text-sm">{detailCampaign.storeName}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500 mb-1">{t('owner')}</div>
+                <div className="text-slate-300 text-sm">{detailCampaign.ownerName || '—'}</div>
+                {detailCampaign.ownerEmail && <div className="text-slate-500 text-xs mt-0.5">{detailCampaign.ownerEmail}</div>}
+                {detailCampaign.ownerPhone && <div className="text-slate-500 text-xs mt-0.5">{detailCampaign.ownerPhone}</div>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-5 gap-6 mb-6">
+              <div>
+                <div className="text-xs text-slate-500 mb-1">{t('status')}</div>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[detailCampaign.status] || 'bg-slate-500/15 text-slate-400'}`}>
+                  {campaignStatusLabel(detailCampaign.status)}
+                </span>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500 mb-1">{t('slots')}</div>
+                <div className="text-slate-300 text-sm">{t('slotsUsed', { used: detailCampaign.currentSlots || 0, total: detailCampaign.slots })}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500 mb-1">{t('budgetPerPost')}</div>
+                <div className="text-slate-300 text-sm">
+                  {detailCampaign.paymentType === 'cash' || detailCampaign.reqBudgetPerPost
+                    ? detailCampaign.reqBudgetPerPost ? formatCurrency(parseFloat(detailCampaign.reqBudgetPerPost)) : '—'
+                    : detailCampaign.productExchangeDescription || '商品交換'}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500 mb-1">{t('period')}</div>
+                <div className="text-slate-300 text-sm">
+                  {detailCampaign.startTimestamp && detailCampaign.endTimestamp
+                    ? `${formatDate(detailCampaign.startTimestamp)} — ${formatDate(detailCampaign.endTimestamp)}`
+                    : detailCampaign.endTimestamp
+                      ? `~ ${formatDate(detailCampaign.endTimestamp)}`
+                      : '—'}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500 mb-1">{t('platforms')}</div>
+                <div className="text-slate-300 text-sm">{detailCampaign.acceptedPlatforms?.replace(/[{}]/g, '') || '—'}</div>
+              </div>
+            </div>
+
+            {detailCampaign.isFreeProductIncluded && (
+              <div className="grid grid-cols-5 gap-6 mb-6">
+                <div>
+                  <div className="text-xs text-slate-500 mb-1">{t('freeProduct')}</div>
+                  <div className="text-emerald-400 text-sm">{t('yes')}</div>
+                </div>
+                {detailCampaign.freeProductValue > 0 && (
+                  <div>
+                    <div className="text-xs text-slate-500 mb-1">{t('freeProductValue')}</div>
+                    <div className="text-slate-300 text-sm">{formatCurrency(detailCampaign.freeProductValue)}</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="border-t border-white/5 pt-5 grid grid-cols-2 gap-6">
+              {detailCampaign.invitationMsg && (
+                <div>
+                  <div className="text-xs text-slate-500 mb-1">{t('invitationMessage')}</div>
+                  <div className="text-slate-300 text-sm whitespace-pre-wrap bg-white/[0.03] rounded-lg p-3 border border-white/5">{detailCampaign.invitationMsg}</div>
+                </div>
+              )}
+
+              {detailCampaign.missionReq && (
+                <div>
+                  <div className="text-xs text-slate-500 mb-1">{t('missionRequirement')}</div>
+                  <div className="text-slate-300 text-sm whitespace-pre-wrap bg-white/[0.03] rounded-lg p-3 border border-white/5">{detailCampaign.missionReq}</div>
+                </div>
+              )}
+
+              {detailCampaign.productExchangeDescription && (
+                <div>
+                  <div className="text-xs text-slate-500 mb-1">{t('productExchangeDesc')}</div>
+                  <div className="text-slate-300 text-sm whitespace-pre-wrap bg-white/[0.03] rounded-lg p-3 border border-white/5">{detailCampaign.productExchangeDescription}</div>
+                </div>
+              )}
+
+              {detailCampaign.requiredHashtags && (
+                <div>
+                  <div className="text-xs text-slate-500 mb-1">{t('requiredHashtags')}</div>
+                  <div className="text-blue-400 text-sm bg-white/[0.03] rounded-lg p-3 border border-white/5">{detailCampaign.requiredHashtags}</div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setDetailCampaign(null)}
+                className="px-4 py-2 text-sm bg-white/5 text-slate-400 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                {t('close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

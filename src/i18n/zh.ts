@@ -158,6 +158,18 @@ const zh: Translations = {
   remainingSlots: '剩餘名額',
   showRejected: '顯示 {count} 筆已拒絕',
   hideRejected: '隱藏已拒絕',
+  campaignDetails: '活動詳情',
+  invitationMessage: '邀請訊息',
+  requirementLabel: '需求類型',
+  missionRequirement: '任務需求',
+  productExchangeDesc: '商品交換內容',
+  requiredHashtags: '指定 Hashtags',
+  platforms: '平台',
+  freeProduct: '包含免費商品',
+  freeProductValue: '免費商品價值',
+  yes: '是',
+  no: '否',
+  close: '關閉',
 
   // Subscription labels
   subFree: '免費',
