@@ -1,7 +1,34 @@
 const BASE = '/api';
 
 async function fetchJSON<T>(url: string): Promise<T> {
-  const res = await fetch(`${BASE}${url}`);
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${BASE}${url}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    throw new Error('Unauthorized');
+  }
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+async function patchJSON<T>(url: string, body: any): Promise<T> {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${BASE}${url}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    throw new Error('Unauthorized');
+  }
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -21,9 +48,17 @@ export const api = {
   },
   brands: {
     all: () => fetchJSON<any>('/brands/all'),
-    list: (page = 1, limit = 50, search = '') =>
-      fetchJSON<any>(`/brands?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`),
+    list: (page = 1, limit = 50, search = '', subscription = '') =>
+      fetchJSON<any>(`/brands?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&subscription=${encodeURIComponent(subscription)}`),
     subscriptionStats: () => fetchJSON<any[]>('/brands/subscription-stats'),
+  },
+  campaigns: {
+    all: () => fetchJSON<any>('/campaigns/all'),
+    list: (page = 1, limit = 50, search = '', status = '') =>
+      fetchJSON<any>(`/campaigns?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}`),
+    reservations: (campaignId: string) => fetchJSON<any[]>(`/campaigns/${campaignId}/reservations`),
+    updateReservation: (campaignId: string, reservationId: string, expireTimestamp: string) =>
+      patchJSON<any>(`/campaigns/${campaignId}/reservations/${reservationId}`, { expireTimestamp }),
   },
   creators: {
     all: () => fetchJSON<any>('/creators/all'),

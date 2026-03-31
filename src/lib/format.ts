@@ -1,9 +1,9 @@
-export function formatCurrency(value: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(value: number, _currency?: string): string {
+  return new Intl.NumberFormat('zh-TW', {
     style: 'currency',
-    currency,
+    currency: 'TWD',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(value);
 }
 

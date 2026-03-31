@@ -5,7 +5,7 @@ export const dashboardRoutes = Router();
 
 // Simple in-memory cache
 let dashboardCache: { data: any; ts: number } | null = null;
-const CACHE_TTL = 60_000; // 60 seconds
+const CACHE_TTL = 30_000;
 
 // Combined endpoint — returns stats + chart + recent transactions in one call
 dashboardRoutes.get('/all', async (req, res) => {
@@ -27,10 +27,10 @@ dashboardRoutes.get('/all', async (req, res) => {
       `),
       query(`
         SELECT
-          COALESCE(SUM(net), 0) as total,
-          COALESCE(SUM(CASE WHEN "createTimestamp" >= NOW() - INTERVAL '30 days' THEN net ELSE 0 END), 0) as last_30d
+          COALESCE(SUM(amount), 0) as total,
+          COALESCE(SUM(CASE WHEN "createTimestamp" >= NOW() - INTERVAL '30 days' THEN amount ELSE 0 END), 0) as last_30d
         FROM cashout
-        WHERE status IN ('wired_successful', 'approved', 'processing')
+        WHERE status = 'wired_successful'
       `),
       query(`
         SELECT COUNT(DISTINCT b.id) as count
@@ -124,10 +124,10 @@ dashboardRoutes.get('/stats', async (_req, res) => {
       `),
       query(`
         SELECT
-          COALESCE(SUM(net), 0) as total,
-          COALESCE(SUM(CASE WHEN "createTimestamp" >= NOW() - INTERVAL '30 days' THEN net ELSE 0 END), 0) as last_30d
+          COALESCE(SUM(amount), 0) as total,
+          COALESCE(SUM(CASE WHEN "createTimestamp" >= NOW() - INTERVAL '30 days' THEN amount ELSE 0 END), 0) as last_30d
         FROM cashout
-        WHERE status IN ('wired_successful', 'approved', 'processing')
+        WHERE status = 'wired_successful'
       `),
       query(`
         SELECT COUNT(DISTINCT b.id) as count

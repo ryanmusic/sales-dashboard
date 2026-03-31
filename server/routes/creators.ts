@@ -5,7 +5,7 @@ export const creatorsRoutes = Router();
 
 // Cache for initial load
 let creatorsInitCache: { data: any; ts: number } | null = null;
-const CACHE_TTL = 60_000;
+const CACHE_TTL = 30_000;
 
 // Combined initial load — payouts + stats + balances in one call
 creatorsRoutes.get('/all', async (_req, res) => {
