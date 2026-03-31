@@ -3,6 +3,8 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { login, authMiddleware } from './auth.js';
 import { dashboardRoutes } from './routes/dashboard.js';
 import { revenueRoutes } from './routes/revenue.js';
@@ -29,6 +31,14 @@ app.use('/api/revenue', revenueRoutes);
 app.use('/api/brands', brandsRoutes);
 app.use('/api/creators', creatorsRoutes);
 app.use('/api/campaigns', campaignsRoutes);
+
+// Serve static frontend in production
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
