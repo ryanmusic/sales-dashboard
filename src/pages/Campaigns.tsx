@@ -90,13 +90,27 @@ export default function Campaigns() {
   const handleUpdateExpiry = async (campaignId: string, reservationId: string) => {
     if (!newExpiry) return;
     try {
-      await api.campaigns.updateReservation(campaignId, reservationId, new Date(newExpiry).toISOString());
+      await api.campaigns.updateReservation(campaignId, reservationId, { expireTimestamp: new Date(newExpiry).toISOString() });
       const res = await api.campaigns.reservations(campaignId);
       setReservations((prev) => ({ ...prev, [campaignId]: res }));
       setEditingExpiry(null);
       setNewExpiry('');
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleUpdateStatus = async (campaignId: string, reservationId: string, newStatus: string) => {
+    try {
+      await api.campaigns.updateReservation(campaignId, reservationId, { status: newStatus });
+      const res = await api.campaigns.reservations(campaignId);
+      setReservations((prev) => ({ ...prev, [campaignId]: res }));
+      // Refresh campaign data to update slot counts
+      const all = await api.campaigns.all();
+      setData((prev: any) => ({ ...prev, stats: all.stats, expiring: all.expiring }));
+    } catch (err: any) {
+      const msg = err.message || 'Failed to update status';
+      alert(msg.includes('No slots') ? t('noSlotsAvailable') : msg);
     }
   };
 
@@ -286,9 +300,16 @@ export default function Campaigns() {
                                     <td className="py-1.5 pr-6 text-slate-300 text-xs whitespace-nowrap">{r.creatorName || '—'}</td>
                                     <td className="py-1.5 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? <a href={`https://instagram.com/${r.igUsername}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-blue-400 transition-colors">@{r.igUsername}</a> : '—'}</td>
                                     <td className="py-1.5 pr-6 whitespace-nowrap">
-                                      <span className={`text-xs px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>
-                                        {reservationStatusLabel(r.status)}
-                                      </span>
+                                      <select
+                                        value={r.status}
+                                        onChange={(e) => { e.stopPropagation(); handleUpdateStatus(c.id, r.id, e.target.value); }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className={`text-xs px-2 py-0.5 rounded-full border-0 cursor-pointer ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}
+                                      >
+                                        {['booked', 'pending', 'used', 'expired', 'canceled', 'rejected'].map((s) => (
+                                          <option key={s} value={s} className="bg-navy-900 text-slate-200">{reservationStatusLabel(s)}</option>
+                                        ))}
+                                      </select>
                                     </td>
                                     <td className="py-1.5 pr-6 text-xs whitespace-nowrap">
                                       {editingExpiry === r.id ? (
@@ -320,7 +341,7 @@ export default function Campaigns() {
                                       )}
                                     </td>
                                     <td className="py-1.5 whitespace-nowrap">
-                                      {editingExpiry !== r.id && (r.status === 'booked' || r.status === 'boooked' || r.status === 'pending') && (
+                                      {editingExpiry !== r.id && (
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -550,9 +571,16 @@ export default function Campaigns() {
                                     <td className="py-2 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? <a href={`https://instagram.com/${r.igUsername}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-blue-400 transition-colors">@{r.igUsername}</a> : '—'}</td>
                                     <td className="py-2 pr-6 text-slate-500 text-xs whitespace-nowrap">{r.creatorEmail || r.creatorPhone || '—'}</td>
                                     <td className="py-2 pr-6 whitespace-nowrap">
-                                      <span className={`text-xs px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>
-                                        {reservationStatusLabel(r.status)}
-                                      </span>
+                                      <select
+                                        value={r.status}
+                                        onChange={(e) => { e.stopPropagation(); handleUpdateStatus(c.id, r.id, e.target.value); }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className={`text-xs px-2 py-0.5 rounded-full border-0 cursor-pointer ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}
+                                      >
+                                        {['booked', 'pending', 'used', 'expired', 'canceled', 'rejected'].map((s) => (
+                                          <option key={s} value={s} className="bg-navy-900 text-slate-200">{reservationStatusLabel(s)}</option>
+                                        ))}
+                                      </select>
                                     </td>
                                     <td className="py-2 pr-6 text-[13px] whitespace-nowrap">
                                       {editingExpiry === r.id ? (
@@ -589,7 +617,7 @@ export default function Campaigns() {
                                             ✕
                                           </button>
                                         </div>
-                                      ) : (r.status === 'booked' || r.status === 'boooked' || r.status === 'pending') && (
+                                      ) : (
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();

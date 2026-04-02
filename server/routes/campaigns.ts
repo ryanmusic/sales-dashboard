@@ -268,23 +268,80 @@ campaignsRoutes.patch('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Update reservation expiry
+// Update reservation expiry and/or status
 campaignsRoutes.patch('/:campaignId/reservations/:reservationId', async (req: Request, res: Response) => {
   try {
-    const { expireTimestamp } = req.body;
-    if (!expireTimestamp) {
-      return res.status(400).json({ error: 'expireTimestamp is required' });
+    const { expireTimestamp, status } = req.body;
+    if (!expireTimestamp && !status) {
+      return res.status(400).json({ error: 'expireTimestamp or status is required' });
     }
+
+    const campaignId = req.params.campaignId;
+    const reservationId = req.params.reservationId;
+
+    // If reactivating (changing to booked from expired/canceled/rejected), check slot availability
+    if (status && (status === 'booked' || status === 'pending')) {
+      // Get current reservation status
+      const current = await query(
+        `SELECT status FROM "cc-slot-reservations" WHERE id = $1 AND "callCardId" = $2`,
+        [reservationId, campaignId],
+      );
+      if (current.rows.length === 0) {
+        return res.status(404).json({ error: 'Reservation not found' });
+      }
+      const oldStatus = current.rows[0].status;
+      // If changing from a non-active status to active, check slots
+      if (oldStatus === 'expired' || oldStatus === 'canceled' || oldStatus === 'rejected') {
+        const campaign = await query(
+          `SELECT slots, "currentSlots" FROM "attention-cards" WHERE id = $1`,
+          [campaignId],
+        );
+        if (campaign.rows.length === 0) {
+          return res.status(404).json({ error: 'Campaign not found' });
+        }
+        const { currentSlots } = campaign.rows[0];
+        if (currentSlots <= 0) {
+          return res.status(409).json({ error: 'No slots available' });
+        }
+      }
+    }
+
+    // Build dynamic update
+    const sets: string[] = ['\"updateTimestamp\" = NOW()'];
+    const params: any[] = [];
+    let i = 1;
+    if (expireTimestamp) {
+      sets.push(`"expireTimestamp" = $${i++}`);
+      params.push(expireTimestamp);
+    }
+    if (status) {
+      sets.push(`"status" = $${i++}`);
+      params.push(status);
+    }
+    params.push(reservationId, campaignId);
 
     const result = await query(`
       UPDATE "cc-slot-reservations"
-      SET "expireTimestamp" = $1, "updateTimestamp" = NOW()
-      WHERE id = $2 AND "callCardId" = $3
-      RETURNING id, "expireTimestamp"
-    `, [expireTimestamp, req.params.reservationId, req.params.campaignId]);
+      SET ${sets.join(', ')}
+      WHERE id = $${i++} AND "callCardId" = $${i++}
+      RETURNING id, "expireTimestamp", status
+    `, params);
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Reservation not found' });
+    }
+
+    // If status changed to/from active, update currentSlots on the campaign
+    if (status) {
+      // Recalculate currentSlots = slots - active reservations count
+      await query(`
+        UPDATE "attention-cards"
+        SET "currentSlots" = slots - (
+          SELECT COUNT(*) FROM "cc-slot-reservations"
+          WHERE "callCardId" = $1 AND status IN ('booked', 'boooked', 'pending', 'used')
+        )
+        WHERE id = $1
+      `, [campaignId]);
     }
 
     res.json(result.rows[0]);

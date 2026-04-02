@@ -11,6 +11,7 @@ import { revenueRoutes } from './routes/revenue.js';
 import { brandsRoutes } from './routes/brands.js';
 import { creatorsRoutes } from './routes/creators.js';
 import { campaignsRoutes } from './routes/campaigns.js';
+import { usersRoutes } from './routes/users.js';
 
 const app = express();
 const PORT = process.env.PORT || 3101;
@@ -31,6 +32,7 @@ app.use('/api/revenue', revenueRoutes);
 app.use('/api/brands', brandsRoutes);
 app.use('/api/creators', creatorsRoutes);
 app.use('/api/campaigns', campaignsRoutes);
+app.use('/api/users', usersRoutes);
 
 // Serve static frontend in production
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +42,17 @@ app.get('*', (_req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
-app.listen(PORT, () => {
+const server = app.listen(Number(PORT), () => {
   console.log(`Server running on http://localhost:${PORT}`);
+});
+server.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    const next = Number(PORT) + 1;
+    console.log(`Port ${PORT} in use, trying ${next}...`);
+    app.listen(next, () => {
+      console.log(`Server running on http://localhost:${next}`);
+    });
+  } else {
+    throw err;
+  }
 });

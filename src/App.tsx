@@ -2,10 +2,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
-import Revenue from './pages/Revenue';
 import Brands from './pages/Brands';
 import CreatorPayments from './pages/CreatorPayments';
 import Campaigns from './pages/Campaigns';
+import CreateAccount from './pages/CreateAccount';
 import Login from './pages/Login';
 
 function ProtectedLayout() {
@@ -18,10 +18,10 @@ function ProtectedLayout() {
       <main className="flex-1 ml-60 p-8 overflow-y-auto overflow-x-hidden">
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/revenue" element={<Revenue />} />
           <Route path="/brands" element={<Brands />} />
           <Route path="/creators" element={<CreatorPayments />} />
           <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/create-account" element={<CreateAccount />} />
         </Routes>
       </main>
     </div>

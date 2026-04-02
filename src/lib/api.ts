@@ -14,6 +14,28 @@ async function fetchJSON<T>(url: string): Promise<T> {
   return res.json();
 }
 
+async function postJSON<T>(url: string, body: any): Promise<T> {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${BASE}${url}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    throw new Error('Unauthorized');
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `API error: ${res.status}` }));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
 async function patchJSON<T>(url: string, body: any): Promise<T> {
   const token = localStorage.getItem('token');
   const res = await fetch(`${BASE}${url}`, {
@@ -59,8 +81,11 @@ export const api = {
     reservations: (campaignId: string) => fetchJSON<any[]>(`/campaigns/${campaignId}/reservations`),
     updateCampaign: (campaignId: string, endTimestamp: string) =>
       patchJSON<any>(`/campaigns/${campaignId}`, { endTimestamp }),
-    updateReservation: (campaignId: string, reservationId: string, expireTimestamp: string) =>
-      patchJSON<any>(`/campaigns/${campaignId}/reservations/${reservationId}`, { expireTimestamp }),
+    updateReservation: (campaignId: string, reservationId: string, data: { expireTimestamp?: string; status?: string }) =>
+      patchJSON<any>(`/campaigns/${campaignId}/reservations/${reservationId}`, data),
+  },
+  accounts: {
+    create: (data: any) => postJSON<any>('/users/create', data),
   },
   creators: {
     all: () => fetchJSON<any>('/creators/all'),
