@@ -171,6 +171,13 @@ const zh: Translations = {
   no: '否',
   close: '關閉',
   noSlotsAvailable: '名額已滿，無法重新啟用此預約',
+  approvedAt: '核准時間',
+  postInfo: '貼文',
+  viewPost: '查看',
+  totalSlots: '總名額',
+  totalViews: '觀看數',
+  totalLikes: '愛心數',
+  submissionAccepted: '已接受',
 
   // Create Account page
   navCreateAccount: '創建帳號',

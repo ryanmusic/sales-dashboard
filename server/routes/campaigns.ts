@@ -222,12 +222,19 @@ campaignsRoutes.get('/:id/reservations', async (req: Request, res: Response) => 
         r."extendedCount",
         r.comment,
         r."violationCount",
+        r."playerId",
         u."fullName" as "creatorName",
         u.email as "creatorEmail",
         u."phoneNumber" as "creatorPhone",
-        (SELECT sa.profile->>'username' FROM "social-accounts" sa WHERE sa."userId"::text = r."playerId"::text AND sa.platform = 'Instagram' LIMIT 1) as "igUsername"
+        (SELECT sa.profile->>'username' FROM "social-accounts" sa WHERE sa."userId"::text = r."playerId"::text AND sa.platform = 'Instagram' LIMIT 1) as "igUsername",
+        ps.status as "submissionStatus",
+        ps."postSnapshot"->>'like_count' as "postLikes",
+        ps."postSnapshot"->>'view_count' as "postViews",
+        p."contentObj"->>'url' as "postUrl"
       FROM "cc-slot-reservations" r
       JOIN users u ON u.id::text = r."playerId"::text
+      LEFT JOIN "post-submissions" ps ON ps."callCardId" = r."callCardId" AND ps."playerId"::text = r."playerId"::text AND ps.status = 'accepted'
+      LEFT JOIN posts p ON p.id = ps."postId"
       WHERE r."callCardId" = $1
       ORDER BY r."createTimestamp" DESC
     `, [req.params.id]);
@@ -239,20 +246,33 @@ campaignsRoutes.get('/:id/reservations', async (req: Request, res: Response) => 
   }
 });
 
-// Update campaign end date
+// Update campaign end date and/or status
 campaignsRoutes.patch('/:id', async (req: Request, res: Response) => {
   try {
-    const { endTimestamp } = req.body;
-    if (!endTimestamp) {
-      return res.status(400).json({ error: 'endTimestamp is required' });
+    const { endTimestamp, status } = req.body;
+    if (!endTimestamp && !status) {
+      return res.status(400).json({ error: 'endTimestamp or status is required' });
     }
+
+    const sets: string[] = ['"updateTimestamp" = NOW()'];
+    const params: any[] = [];
+    let i = 1;
+    if (endTimestamp) {
+      sets.push(`"endTimestamp" = $${i++}`);
+      params.push(endTimestamp);
+    }
+    if (status) {
+      sets.push(`status = $${i++}`);
+      params.push(status);
+    }
+    params.push(req.params.id);
 
     const result = await query(`
       UPDATE "attention-cards"
-      SET "endTimestamp" = $1, "updateTimestamp" = NOW()
-      WHERE id = $2
-      RETURNING id, "endTimestamp"
-    `, [endTimestamp, req.params.id]);
+      SET ${sets.join(', ')}
+      WHERE id = $${i++}
+      RETURNING id, "endTimestamp", status
+    `, params);
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Campaign not found' });

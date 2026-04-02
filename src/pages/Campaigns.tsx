@@ -114,11 +114,27 @@ export default function Campaigns() {
     }
   };
 
+  const handleUpdateCampaignStatus = async (campaignId: string, newStatus: string) => {
+    try {
+      await api.campaigns.updateCampaign(campaignId, { status: newStatus });
+      setData((prev: any) => ({
+        ...prev,
+        campaigns: prev.campaigns.map((c: any) =>
+          c.id === campaignId ? { ...c, status: newStatus } : c,
+        ),
+        expiring: (prev.expiring || []).map((c: any) =>
+          c.id === campaignId ? { ...c, status: newStatus } : c,
+        ),
+      }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleUpdateCampaignEnd = async (campaignId: string) => {
     if (!newCampaignEnd) return;
     try {
-      await api.campaigns.updateCampaign(campaignId, new Date(newCampaignEnd).toISOString());
-      // Update local data
+      await api.campaigns.updateCampaign(campaignId, { endTimestamp: new Date(newCampaignEnd).toISOString() });
       setData((prev: any) => ({
         ...prev,
         campaigns: prev.campaigns.map((c: any) =>
@@ -282,24 +298,37 @@ export default function Campaigns() {
                         const filtered = [...campaignReservations]
                           .filter((r: any) => showingRejected || r.status !== 'rejected')
                           .sort((a, b) => (a.status === 'used' ? -1 : b.status === 'used' ? 1 : 0));
+                        const totalViews = campaignReservations.reduce((s: number, r: any) => s + (parseInt(r.postViews) || 0), 0);
+                        const totalLikes = campaignReservations.reduce((s: number, r: any) => s + (parseInt(r.postLikes) || 0), 0);
+                        const acceptedCount = campaignReservations.filter((r: any) => r.submissionStatus === 'accepted').length;
+                        const bookedCount = campaignReservations.filter((r: any) => ['booked', 'boooked', 'pending', 'used'].includes(r.status)).length;
                         return (
                           <>
+                            <div className="flex items-center gap-4 mb-2 text-xs">
+                              <span className="text-slate-400">{t('totalSlots')}: <span className="text-slate-200 font-medium">{c.slots}</span></span>
+                              <span className="text-slate-400">{t('reservationBooked')}: <span className="text-emerald-400 font-medium">{bookedCount}</span></span>
+                              <span className="text-slate-400">{t('submissionAccepted')}: <span className="text-blue-400 font-medium">{acceptedCount}</span></span>
+                              {totalViews > 0 && <span className="text-slate-400">{t('totalViews')}: <span className="text-violet-400 font-medium">{totalViews.toLocaleString()}</span></span>}
+                              {totalLikes > 0 && <span className="text-slate-400">{t('totalLikes')}: <span className="text-pink-400 font-medium">{totalLikes.toLocaleString()}</span></span>}
+                            </div>
                             <table className="text-sm mt-1">
                               <thead>
                                 <tr className="text-slate-500 text-xs">
-                                  <th className="text-left py-1.5 pr-6 font-medium">{t('creatorName')}</th>
-                                  <th className="text-left py-1.5 pr-6 font-medium">{t('instagram')}</th>
-                                  <th className="text-left py-1.5 pr-6 font-medium">{t('reservationStatus')}</th>
-                                  <th className="text-left py-1.5 pr-6 font-medium">{t('reservationExpiry')}</th>
+                                  <th className="text-left py-1.5 pr-4 font-medium">{t('creatorName')}</th>
+                                  <th className="text-left py-1.5 pr-4 font-medium">{t('instagram')}</th>
+                                  <th className="text-left py-1.5 pr-4 font-medium">{t('reservationStatus')}</th>
+                                  <th className="text-left py-1.5 pr-4 font-medium">{t('approvedAt')}</th>
+                                  <th className="text-left py-1.5 pr-4 font-medium">{t('reservationExpiry')}</th>
+                                  <th className="text-left py-1.5 pr-4 font-medium">{t('postInfo')}</th>
                                   <th className="text-left py-1.5 font-medium"></th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {filtered.map((r: any) => (
                                   <tr key={r.id} className="border-t border-white/5">
-                                    <td className="py-1.5 pr-6 text-slate-300 text-xs whitespace-nowrap">{r.creatorName || '—'}</td>
-                                    <td className="py-1.5 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? <a href={`https://instagram.com/${r.igUsername}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-blue-400 transition-colors">@{r.igUsername}</a> : '—'}</td>
-                                    <td className="py-1.5 pr-6 whitespace-nowrap">
+                                    <td className="py-1.5 pr-4 text-slate-300 text-xs whitespace-nowrap">{r.creatorName || '—'}</td>
+                                    <td className="py-1.5 pr-4 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? <a href={`https://instagram.com/${r.igUsername}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-blue-400 transition-colors">@{r.igUsername}</a> : '—'}</td>
+                                    <td className="py-1.5 pr-4 whitespace-nowrap">
                                       <select
                                         value={r.status}
                                         onChange={(e) => { e.stopPropagation(); handleUpdateStatus(c.id, r.id, e.target.value); }}
@@ -311,7 +340,8 @@ export default function Campaigns() {
                                         ))}
                                       </select>
                                     </td>
-                                    <td className="py-1.5 pr-6 text-xs whitespace-nowrap">
+                                    <td className="py-1.5 pr-4 text-xs text-slate-400 whitespace-nowrap">{r.approvedAt ? formatDateTime(r.approvedAt) : '—'}</td>
+                                    <td className="py-1.5 pr-4 text-xs whitespace-nowrap">
                                       {editingExpiry === r.id ? (
                                         <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                           <input
@@ -339,6 +369,14 @@ export default function Campaigns() {
                                       ) : (
                                         <span className="text-slate-400">{r.expireTimestamp ? formatDateTime(r.expireTimestamp) : '—'}</span>
                                       )}
+                                    </td>
+                                    <td className="py-1.5 pr-4 text-xs whitespace-nowrap">
+                                      {r.postUrl ? (
+                                        <span className="inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                          <a href={r.postUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 transition-colors">{t('viewPost')}</a>
+                                          <span className="text-slate-500">{r.postViews ? `${r.postViews}v` : ''}{r.postLikes ? ` ${r.postLikes}♥` : ''}</span>
+                                        </span>
+                                      ) : '—'}
                                     </td>
                                     <td className="py-1.5 whitespace-nowrap">
                                       {editingExpiry !== r.id && (
@@ -477,9 +515,16 @@ export default function Campaigns() {
                       </td>
                       <td className="py-3 px-4 text-slate-400 text-[13px]">{c.storeName}</td>
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status] || 'bg-slate-500/15 text-slate-400'}`}>
-                          {campaignStatusLabel(c.status)}
-                        </span>
+                        <select
+                          value={c.status}
+                          onChange={(e) => handleUpdateCampaignStatus(c.id, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className={`text-xs px-2 py-0.5 rounded-full border-0 cursor-pointer ${STATUS_COLORS[c.status] || 'bg-slate-500/15 text-slate-400'}`}
+                        >
+                          {['active', 'pending', 'expired', 'concluded', 'archived'].map((s) => (
+                            <option key={s} value={s} className="bg-navy-900 text-slate-200">{campaignStatusLabel(s)}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="py-3 px-4 text-center text-slate-300">
                         {t('slotsUsed', { used: c.currentSlots || 0, total: c.slots })}
@@ -550,27 +595,40 @@ export default function Campaigns() {
                             const filtered = [...campaignReservations]
                               .filter((r: any) => showingRejected || r.status !== 'rejected')
                               .sort((a, b) => (a.status === 'used' ? -1 : b.status === 'used' ? 1 : 0));
+                            const totalViews = campaignReservations.reduce((s: number, r: any) => s + (parseInt(r.postViews) || 0), 0);
+                            const totalLikes = campaignReservations.reduce((s: number, r: any) => s + (parseInt(r.postLikes) || 0), 0);
+                            const acceptedCount = campaignReservations.filter((r: any) => r.submissionStatus === 'accepted').length;
+                            const bookedCount = campaignReservations.filter((r: any) => ['booked', 'boooked', 'pending', 'used'].includes(r.status)).length;
                             return (
                             <>
+                            <div className="flex items-center gap-4 mb-3 text-xs">
+                              <span className="text-slate-400">{t('totalSlots')}: <span className="text-slate-200 font-medium">{c.slots}</span></span>
+                              <span className="text-slate-400">{t('reservationBooked')}: <span className="text-emerald-400 font-medium">{bookedCount}</span></span>
+                              <span className="text-slate-400">{t('submissionAccepted')}: <span className="text-blue-400 font-medium">{acceptedCount}</span></span>
+                              {totalViews > 0 && <span className="text-slate-400">{t('totalViews')}: <span className="text-violet-400 font-medium">{totalViews.toLocaleString()}</span></span>}
+                              {totalLikes > 0 && <span className="text-slate-400">{t('totalLikes')}: <span className="text-pink-400 font-medium">{totalLikes.toLocaleString()}</span></span>}
+                            </div>
                             <table className="text-sm">
                               <thead>
                                 <tr className="text-slate-500 text-xs">
-                                  <th className="text-left py-2 pr-6 font-medium">{t('creatorName')}</th>
-                                  <th className="text-left py-2 pr-6 font-medium">{t('instagram')}</th>
-                                  <th className="text-left py-2 pr-6 font-medium">{t('contact')}</th>
-                                  <th className="text-left py-2 pr-6 font-medium">{t('reservationStatus')}</th>
-                                  <th className="text-left py-2 pr-6 font-medium">{t('reservationExpiry')}</th>
-                                  <th className="text-left py-2 pr-6 font-medium">{t('date')}</th>
+                                  <th className="text-left py-2 pr-4 font-medium">{t('creatorName')}</th>
+                                  <th className="text-left py-2 pr-4 font-medium">{t('instagram')}</th>
+                                  <th className="text-left py-2 pr-4 font-medium">{t('contact')}</th>
+                                  <th className="text-left py-2 pr-4 font-medium">{t('reservationStatus')}</th>
+                                  <th className="text-left py-2 pr-4 font-medium">{t('approvedAt')}</th>
+                                  <th className="text-left py-2 pr-4 font-medium">{t('reservationExpiry')}</th>
+                                  <th className="text-left py-2 pr-4 font-medium">{t('postInfo')}</th>
+                                  <th className="text-left py-2 pr-4 font-medium">{t('date')}</th>
                                   <th className="text-left py-2 font-medium"></th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {filtered.map((r: any) => (
                                   <tr key={r.id} className="border-t border-white/5">
-                                    <td className="py-2 pr-6 text-slate-300 whitespace-nowrap">{r.creatorName || '—'}</td>
-                                    <td className="py-2 pr-6 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? <a href={`https://instagram.com/${r.igUsername}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-blue-400 transition-colors">@{r.igUsername}</a> : '—'}</td>
-                                    <td className="py-2 pr-6 text-slate-500 text-xs whitespace-nowrap">{r.creatorEmail || r.creatorPhone || '—'}</td>
-                                    <td className="py-2 pr-6 whitespace-nowrap">
+                                    <td className="py-2 pr-4 text-slate-300 whitespace-nowrap">{r.creatorName || '—'}</td>
+                                    <td className="py-2 pr-4 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? <a href={`https://instagram.com/${r.igUsername}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-blue-400 transition-colors">@{r.igUsername}</a> : '—'}</td>
+                                    <td className="py-2 pr-4 text-slate-500 text-xs whitespace-nowrap">{r.creatorEmail || r.creatorPhone || '—'}</td>
+                                    <td className="py-2 pr-4 whitespace-nowrap">
                                       <select
                                         value={r.status}
                                         onChange={(e) => { e.stopPropagation(); handleUpdateStatus(c.id, r.id, e.target.value); }}
@@ -582,7 +640,8 @@ export default function Campaigns() {
                                         ))}
                                       </select>
                                     </td>
-                                    <td className="py-2 pr-6 text-[13px] whitespace-nowrap">
+                                    <td className="py-2 pr-4 text-xs text-slate-400 whitespace-nowrap">{r.approvedAt ? formatDateTime(r.approvedAt) : '—'}</td>
+                                    <td className="py-2 pr-4 text-[13px] whitespace-nowrap">
                                       {editingExpiry === r.id ? (
                                         <input
                                           type="datetime-local"
@@ -598,7 +657,15 @@ export default function Campaigns() {
                                         <span className="text-slate-400">{r.expireTimestamp ? formatDateTime(r.expireTimestamp) : '—'}</span>
                                       )}
                                     </td>
-                                    <td className="py-2 pr-6 text-slate-500 text-xs whitespace-nowrap">
+                                    <td className="py-2 pr-4 text-xs whitespace-nowrap">
+                                      {r.postUrl ? (
+                                        <span className="inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                          <a href={r.postUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 transition-colors">{t('viewPost')}</a>
+                                          <span className="text-slate-500">{r.postViews ? `${r.postViews}v` : ''}{r.postLikes ? ` ${r.postLikes}♥` : ''}</span>
+                                        </span>
+                                      ) : '—'}
+                                    </td>
+                                    <td className="py-2 pr-4 text-slate-500 text-xs whitespace-nowrap">
                                       {r.createTimestamp ? formatDate(r.createTimestamp) : '—'}
                                     </td>
                                     <td className="py-2">

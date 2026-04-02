@@ -194,6 +194,13 @@ const en = {
   no: 'No',
   close: 'Close',
   noSlotsAvailable: 'No slots available — cannot reactivate this reservation',
+  approvedAt: 'Approved',
+  postInfo: 'Post',
+  viewPost: 'View',
+  totalSlots: 'Total Slots',
+  totalViews: 'Views',
+  totalLikes: 'Likes',
+  submissionAccepted: 'Accepted',
 
   // Create Account page
   navCreateAccount: 'Create Account',

@@ -79,8 +79,8 @@ export const api = {
     list: (page = 1, limit = 50, search = '', status = '') =>
       fetchJSON<any>(`/campaigns?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}`),
     reservations: (campaignId: string) => fetchJSON<any[]>(`/campaigns/${campaignId}/reservations`),
-    updateCampaign: (campaignId: string, endTimestamp: string) =>
-      patchJSON<any>(`/campaigns/${campaignId}`, { endTimestamp }),
+    updateCampaign: (campaignId: string, data: { endTimestamp?: string; status?: string }) =>
+      patchJSON<any>(`/campaigns/${campaignId}`, data),
     updateReservation: (campaignId: string, reservationId: string, data: { expireTimestamp?: string; status?: string }) =>
       patchJSON<any>(`/campaigns/${campaignId}/reservations/${reservationId}`, data),
   },
