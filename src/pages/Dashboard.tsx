@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [mrr, setMrr] = useState<any[]>([]);
   const [deposits, setDeposits] = useState<any>({ records: [], total: 0 });
   const [breakdown, setBreakdown] = useState<any[]>([]);
+  const [finance, setFinance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
 
@@ -31,8 +32,10 @@ export default function Dashboard() {
     Promise.all([
       api.dashboard.all(),
       api.revenue.all(),
+      api.dashboard.finance(),
     ])
-      .then(([dashData, revData]) => {
+      .then(([dashData, revData, finData]) => {
+        setFinance(finData);
         setStats(dashData.stats);
         setChartData(
           dashData.chartData.map((d: any) => ({
@@ -237,6 +240,137 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Finance Section */}
+      {finance && (
+        <>
+          {/* AR/AP Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 mb-6">
+            <StatCard
+              title={t('accountsReceivable')}
+              value={formatCurrency(finance.accountsReceivable.total)}
+              subtitle={`${finance.accountsReceivable.records.length} ${t('pendingDeposits')}`}
+              color="amber"
+            />
+            <StatCard
+              title={t('accountsPayable')}
+              value={formatCurrency(finance.accountsPayable.total)}
+              subtitle={`${finance.accountsPayable.records.length} ${t('pendingPayouts')}`}
+              color="violet"
+            />
+            <StatCard
+              title={t('apNetAmount')}
+              value={formatCurrency(finance.accountsPayable.netTotal)}
+              subtitle={t('afterCommission')}
+              color="blue"
+            />
+          </div>
+
+          {/* Top Customers */}
+          <div className="bg-navy-900 border border-white/5 rounded-xl p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-4">{t('topCustomers')}</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-slate-400 border-b border-white/5">
+                    <th className="text-left py-3 px-4 font-medium">#</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('brand')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('owner')}</th>
+                    <th className="text-right py-3 px-4 font-medium">{t('totalRevenue')}</th>
+                    <th className="text-center py-3 px-4 font-medium">{t('deposits')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('lastDeposit')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {finance.topCustomers.map((c: any, i: number) => (
+                    <tr key={c.userId} className="border-b border-white/5 hover:bg-white/[0.02]">
+                      <td className="py-2.5 px-4 text-slate-500">{i + 1}</td>
+                      <td className="py-2.5 px-4 text-slate-200">{c.brandName}</td>
+                      <td className="py-2.5 px-4 text-slate-400 text-xs">{c.fullName || c.email || c.phoneNumber || '—'}</td>
+                      <td className="py-2.5 px-4 text-right font-medium font-mono">{formatCurrency(parseFloat(c.totalRevenue))}</td>
+                      <td className="py-2.5 px-4 text-center text-slate-400">{c.depositCount}</td>
+                      <td className="py-2.5 px-4 text-slate-500 text-xs">{c.lastDeposit ? formatDate(c.lastDeposit) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Pending Payouts (AP) */}
+          {finance.accountsPayable.records.length > 0 && (
+            <div className="bg-navy-900 border border-violet-500/20 rounded-xl p-6 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                <h3 className="text-lg font-semibold text-violet-300">{t('pendingPayoutsTitle')}</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-slate-400 border-b border-white/5">
+                      <th className="text-left py-2 px-4 font-medium">{t('creator')}</th>
+                      <th className="text-left py-2 px-4 font-medium">{t('instagram')}</th>
+                      <th className="text-right py-2 px-4 font-medium">{t('amount')}</th>
+                      <th className="text-right py-2 px-4 font-medium">{t('commission')}</th>
+                      <th className="text-right py-2 px-4 font-medium">{t('net')}</th>
+                      <th className="text-left py-2 px-4 font-medium">{t('status')}</th>
+                      <th className="text-left py-2 px-4 font-medium">{t('date')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {finance.accountsPayable.records.map((c: any) => (
+                      <tr key={c.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                        <td className="py-2 px-4 text-slate-300">{c.creatorName || '—'}</td>
+                        <td className="py-2 px-4 text-xs">{c.igUsername ? <a href={`https://instagram.com/${c.igUsername}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">@{c.igUsername}</a> : '—'}</td>
+                        <td className="py-2 px-4 text-right font-mono text-slate-300">{formatCurrency(parseFloat(c.amount))}</td>
+                        <td className="py-2 px-4 text-right font-mono text-slate-500">{c.commission ? formatCurrency(parseFloat(c.commission)) : '—'}</td>
+                        <td className="py-2 px-4 text-right font-mono text-emerald-400">{c.net ? formatCurrency(parseFloat(c.net)) : '—'}</td>
+                        <td className="py-2 px-4"><span className={`badge ${statusClass(c.status)}`}>{statusLabel(c.status, t)}</span></td>
+                        <td className="py-2 px-4 text-slate-500 text-xs">{formatDate(c.createTimestamp)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Revenue by Campaign */}
+          <div className="bg-navy-900 border border-white/5 rounded-xl p-6">
+            <h3 className="text-lg font-semibold mb-4">{t('revByCampaign')}</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-slate-400 border-b border-white/5">
+                    <th className="text-left py-2 px-4 font-medium">{t('campaignTitle')}</th>
+                    <th className="text-left py-2 px-4 font-medium">{t('brand')}</th>
+                    <th className="text-left py-2 px-4 font-medium">{t('status')}</th>
+                    <th className="text-center py-2 px-4 font-medium">{t('slots')}</th>
+                    <th className="text-center py-2 px-4 font-medium">{t('reservations')}</th>
+                    <th className="text-center py-2 px-4 font-medium">{t('submissionAccepted')}</th>
+                    <th className="text-right py-2 px-4 font-medium">{t('totalViews')}</th>
+                    <th className="text-right py-2 px-4 font-medium">{t('totalLikes')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {finance.revByCampaign.map((c: any) => (
+                    <tr key={c.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                      <td className="py-2 px-4 text-slate-200">{c.title}</td>
+                      <td className="py-2 px-4 text-slate-400 text-xs">{c.brandName}</td>
+                      <td className="py-2 px-4"><span className={`text-xs px-2 py-0.5 rounded-full ${c.status === 'active' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-500/15 text-blue-400'}`}>{c.status}</span></td>
+                      <td className="py-2 px-4 text-center text-slate-400">{c.slots}</td>
+                      <td className="py-2 px-4 text-center text-slate-300">{c.totalReservations}</td>
+                      <td className="py-2 px-4 text-center text-blue-400">{c.acceptedCount}</td>
+                      <td className="py-2 px-4 text-right font-mono text-violet-400">{parseInt(c.totalViews).toLocaleString()}</td>
+                      <td className="py-2 px-4 text-right font-mono text-pink-400">{parseInt(c.totalLikes).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -110,6 +110,130 @@ dashboardRoutes.get('/all', async (req, res) => {
   }
 });
 
+// Top customers by revenue + AR/AP summary
+dashboardRoutes.get('/finance', async (_req, res) => {
+  try {
+    const [topCustomers, accountsReceivable, accountsPayable, revByCampaign] = await Promise.all([
+      // Top 20 customers by revenue (last 12 months), exclude internal
+      query(`
+        SELECT
+          u.id as "userId",
+          u."fullName",
+          u.email,
+          u."phoneNumber",
+          CASE WHEN LOWER(b.name) = 'my default brand'
+            THEN COALESCE((SELECT s.name FROM stores s WHERE s."brandId"::text = b.id::text AND s."deleteTimestamp" IS NULL LIMIT 1), b.name)
+            ELSE b.name
+          END as "brandName",
+          SUM(d.amount::numeric) as "totalRevenue",
+          COUNT(*) as "depositCount",
+          MAX(d."createTimestamp") as "lastDeposit"
+        FROM "deposit-record" d
+        JOIN users u ON u.id::text = d."userId"::text
+        JOIN user_brands ub ON ub."userId"::text = u.id::text AND ub.role = 'owner'
+        JOIN brands b ON b.id = ub."brandId"
+        WHERE d.status = 'succeeded'
+          AND d."createTimestamp" >= NOW() - INTERVAL '12 months'
+          AND u.email NOT ILIKE '%tellitapp.ai'
+        GROUP BY u.id, u."fullName", u.email, u."phoneNumber", b.id, b.name
+        ORDER BY "totalRevenue" DESC
+        LIMIT 20
+      `),
+      // Accounts Receivable: pending/failed deposits
+      query(`
+        SELECT
+          u."fullName",
+          u.email,
+          CASE WHEN LOWER(b.name) = 'my default brand'
+            THEN COALESCE((SELECT s.name FROM stores s WHERE s."brandId"::text = b.id::text AND s."deleteTimestamp" IS NULL LIMIT 1), b.name)
+            ELSE b.name
+          END as "brandName",
+          d.amount::numeric,
+          d.status,
+          d."createTimestamp"
+        FROM "deposit-record" d
+        JOIN users u ON u.id::text = d."userId"::text
+        JOIN user_brands ub ON ub."userId"::text = u.id::text AND ub.role = 'owner'
+        JOIN brands b ON b.id = ub."brandId"
+        WHERE d.status IN ('pending')
+          AND u.email NOT ILIKE '%tellitapp.ai'
+        ORDER BY d.amount::numeric DESC
+        LIMIT 50
+      `),
+      // Accounts Payable: pending creator cashouts
+      query(`
+        SELECT
+          c.id,
+          u."fullName" as "creatorName",
+          u.email,
+          (SELECT sa.profile->>'username' FROM "social-accounts" sa WHERE sa."userId"::text = u.id::text AND sa.platform = 'Instagram' AND sa."deletedAt" IS NULL LIMIT 1) as "igUsername",
+          c.amount::numeric,
+          c.commission::numeric,
+          c.net::numeric,
+          c.status,
+          c."createTimestamp",
+          c."commissionRate"
+        FROM cashout c
+        JOIN users u ON u.id::text = c."userId"::text
+        WHERE c.status IN ('pending', 'processing', 'approved')
+        ORDER BY c."createTimestamp" DESC
+        LIMIT 50
+      `),
+      // Revenue by campaign (top 20)
+      query(`
+        SELECT
+          ac.id,
+          ac.title,
+          ac.status,
+          ac.slots,
+          s.name as "storeName",
+          CASE WHEN LOWER(b2.name) = 'my default brand'
+            THEN COALESCE((SELECT s2.name FROM stores s2 WHERE s2."brandId"::text = b2.id::text AND s2."deleteTimestamp" IS NULL LIMIT 1), b2.name)
+            ELSE b2.name
+          END as "brandName",
+          COALESCE(sub.total_views, 0) as "totalViews",
+          COALESCE(sub.total_likes, 0) as "totalLikes",
+          COALESCE(sub.accepted_count, 0) as "acceptedCount",
+          COALESCE(res.total_reservations, 0) as "totalReservations"
+        FROM "attention-cards" ac
+        JOIN stores s ON s.id = ac."storeId"
+        JOIN brands b2 ON b2.id::text = s."brandId"::text
+        LEFT JOIN LATERAL (
+          SELECT
+            SUM((ps."postSnapshot"->>'view_count')::int) as total_views,
+            SUM((ps."postSnapshot"->>'like_count')::int) as total_likes,
+            COUNT(*) as accepted_count
+          FROM "post-submissions" ps
+          WHERE ps."callCardId" = ac.id AND ps.status = 'accepted' AND ps."postSnapshot" IS NOT NULL
+        ) sub ON true
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) as total_reservations
+          FROM "cc-slot-reservations" r
+          WHERE r."callCardId" = ac.id AND r.status IN ('booked', 'boooked', 'pending', 'used')
+        ) res ON true
+        WHERE ac.status IN ('active', 'concluded')
+        ORDER BY COALESCE(sub.total_views, 0) DESC
+        LIMIT 20
+      `),
+    ]);
+
+    // Summary totals
+    const arTotal = accountsReceivable.rows.reduce((s: number, r: any) => s + parseFloat(r.amount), 0);
+    const apTotal = accountsPayable.rows.reduce((s: number, r: any) => s + parseFloat(r.amount), 0);
+    const apNetTotal = accountsPayable.rows.reduce((s: number, r: any) => s + (parseFloat(r.net) || 0), 0);
+
+    res.json({
+      topCustomers: topCustomers.rows,
+      accountsReceivable: { records: accountsReceivable.rows, total: arTotal },
+      accountsPayable: { records: accountsPayable.rows, total: apTotal, netTotal: apNetTotal },
+      revByCampaign: revByCampaign.rows,
+    });
+  } catch (err) {
+    console.error('Finance dashboard error:', err);
+    res.status(500).json({ error: 'Failed to fetch finance data' });
+  }
+});
+
 // KPI summary stats (kept for backward compat)
 dashboardRoutes.get('/stats', async (_req, res) => {
   try {

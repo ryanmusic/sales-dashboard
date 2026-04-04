@@ -12,6 +12,7 @@ import { brandsRoutes } from './routes/brands.js';
 import { creatorsRoutes } from './routes/creators.js';
 import { campaignsRoutes } from './routes/campaigns.js';
 import { usersRoutes } from './routes/users.js';
+import { vipRoutes } from './routes/vip.js';
 
 const app = express();
 const PORT = process.env.PORT || 3101;
@@ -33,6 +34,7 @@ app.use('/api/brands', brandsRoutes);
 app.use('/api/creators', creatorsRoutes);
 app.use('/api/campaigns', campaignsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/vip', vipRoutes);
 
 // Serve static frontend in production
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

@@ -15,6 +15,9 @@ export default function CreatorPayments() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [igSearch, setIgSearch] = useState('');
+  const [igResults, setIgResults] = useState<any[] | null>(null);
+  const [searchingIg, setSearchingIg] = useState(false);
 
   useEffect(() => {
     api.creators.all()
@@ -35,7 +38,38 @@ export default function CreatorPayments() {
 
   const handleStatusChange = (status: string) => {
     setStatusFilter(status);
+    setIgResults(null);
     fetchPayouts(1, status);
+  };
+
+  const handleIgSearch = async () => {
+    if (!igSearch.trim()) { setIgResults(null); return; }
+    setSearchingIg(true);
+    try {
+      const results = await api.creators.searchByIg(igSearch.trim());
+      setIgResults(results);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSearchingIg(false);
+    }
+  };
+
+  const handlePayoutAction = async (payoutId: string, newStatus: string) => {
+    try {
+      await api.creators.updatePayout(payoutId, newStatus);
+      // Refresh data
+      if (igResults) {
+        handleIgSearch();
+      } else {
+        fetchPayouts(page, statusFilter);
+      }
+      // Refresh stats
+      const data = await api.creators.all();
+      setStats(data.stats);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update payout');
+    }
   };
 
   if (loading) return <LoadingSpinner />;
@@ -121,10 +155,35 @@ export default function CreatorPayments() {
 
       {/* Payout Records */}
       <div className="bg-navy-900 border border-white/5 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h3 className="text-lg font-semibold">{t('payoutRecords')}</h3>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-400">{payouts.total} {t('total')}</span>
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={igSearch}
+                onChange={(e) => setIgSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleIgSearch()}
+                placeholder={t('searchByIg')}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-slate-200 w-44 focus:outline-none focus:border-blue-500"
+              />
+              <button
+                onClick={handleIgSearch}
+                disabled={searchingIg}
+                className="px-3 py-1.5 text-sm bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors disabled:opacity-50"
+              >
+                {t('search')}
+              </button>
+              {igResults && (
+                <button
+                  onClick={() => { setIgResults(null); setIgSearch(''); }}
+                  className="px-2 py-1.5 text-sm text-slate-400 hover:text-slate-200"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <span className="text-sm text-slate-400">{igResults ? igResults.length : payouts.total} {t('total')}</span>
             <select
               value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
@@ -153,22 +212,30 @@ export default function CreatorPayments() {
                 <th className="text-left py-3 px-4 font-medium">{t('status')}</th>
                 <th className="text-left py-3 px-4 font-medium">{t('bank')}</th>
                 <th className="text-left py-3 px-4 font-medium">{t('notes')}</th>
+                <th className="text-left py-3 px-4 font-medium">{t('actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {payouts.payouts.map((p: any) => (
-                <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+              {(igResults || payouts.payouts).map((p: any) => {
+                const amount = parseFloat(p.amount);
+                const autoApprovable = p.status === 'pending' && amount < 20000;
+                return (
+                <tr key={p.id} className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${autoApprovable ? 'bg-emerald-500/[0.03]' : ''}`}>
                   <td className="py-3 px-4 text-slate-300">{formatDate(p.createTimestamp)}</td>
                   <td className="py-3 px-4">
                     <div className="text-slate-200">{p.fullName || '—'}</div>
                     <div className="text-xs text-slate-500">{p.email}</div>
+                    {p.igUsername && <div className="text-xs"><a href={`https://instagram.com/${p.igUsername}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">@{p.igUsername}</a></div>}
                   </td>
                   <td className="py-3 px-4">
                     <span className={`badge ${p.roleType === 'player' ? 'badge-info' : 'badge-warning'}`}>
                       {p.roleType}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-right font-medium">{formatCurrency(parseFloat(p.amount), p.currency)}</td>
+                  <td className="py-3 px-4 text-right font-medium">
+                    {formatCurrency(amount, p.currency)}
+                    {autoApprovable && <div className="text-[10px] text-emerald-400">&lt;20K</div>}
+                  </td>
                   <td className="py-3 px-4 text-right text-slate-400">
                     {formatCurrency(parseFloat(p.commission), p.currency)}
                     <span className="text-xs ml-1">({(parseFloat(p.commissionRate) * 100).toFixed(0)}%)</span>
@@ -185,8 +252,20 @@ export default function CreatorPayments() {
                   <td className="py-3 px-4 text-slate-500 text-xs max-w-[150px] truncate">
                     {p.comment || p.reason || '—'}
                   </td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    {p.status === 'pending' && (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handlePayoutAction(p.id, 'approved')} className="px-2 py-0.5 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30">{t('approve')}</button>
+                        <button onClick={() => handlePayoutAction(p.id, 'rejected')} className="px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded hover:bg-red-500/30">{t('reject')}</button>
+                      </div>
+                    )}
+                    {p.status === 'approved' && (
+                      <button onClick={() => handlePayoutAction(p.id, 'wired_successful')} className="px-2 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30">{t('markWired')}</button>
+                    )}
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
               {payouts.payouts.length === 0 && (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-slate-500">{t('noPayoutsFound')}</td>

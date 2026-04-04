@@ -61,6 +61,7 @@ export const api = {
     stats: () => fetchJSON<any>('/dashboard/stats'),
     revenueChart: (months = 12) => fetchJSON<any[]>(`/dashboard/revenue-chart?months=${months}`),
     recentTransactions: () => fetchJSON<any[]>('/dashboard/recent-transactions'),
+    finance: () => fetchJSON<any>('/dashboard/finance'),
   },
   revenue: {
     all: () => fetchJSON<any>('/revenue/all'),
@@ -84,6 +85,9 @@ export const api = {
     updateReservation: (campaignId: string, reservationId: string, data: { expireTimestamp?: string; status?: string }) =>
       patchJSON<any>(`/campaigns/${campaignId}/reservations/${reservationId}`, data),
   },
+  vip: {
+    scoring: () => fetchJSON<any>('/vip/scoring'),
+  },
   accounts: {
     create: (data: any) => postJSON<any>('/users/create', data),
   },
@@ -93,5 +97,9 @@ export const api = {
       fetchJSON<any>(`/creators/payouts?page=${page}&limit=${limit}&status=${encodeURIComponent(status)}`),
     stats: () => fetchJSON<any[]>('/creators/stats'),
     balances: () => fetchJSON<any[]>('/creators/balances'),
+    searchByIg: (ig: string) => fetchJSON<any[]>(`/creators/payouts/search?ig=${encodeURIComponent(ig)}`),
+    lookup: (params: { ig?: string; userId?: string }) =>
+      fetchJSON<any>(`/creators/lookup?${params.ig ? `ig=${encodeURIComponent(params.ig)}` : `userId=${params.userId}`}`),
+    updatePayout: (payoutId: string, status: string) => patchJSON<any>(`/creators/payouts/${payoutId}`, { status }),
   },
 };

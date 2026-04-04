@@ -6,6 +6,8 @@ import Brands from './pages/Brands';
 import CreatorPayments from './pages/CreatorPayments';
 import Campaigns from './pages/Campaigns';
 import CreateAccount from './pages/CreateAccount';
+import Support from './pages/Support';
+import VipDashboard from './pages/VipDashboard';
 import Login from './pages/Login';
 
 function ProtectedLayout() {
@@ -21,6 +23,8 @@ function ProtectedLayout() {
           <Route path="/brands" element={<Brands />} />
           <Route path="/creators" element={<CreatorPayments />} />
           <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/vip" element={<VipDashboard />} />
+          <Route path="/support" element={<Support />} />
           <Route path="/create-account" element={<CreateAccount />} />
         </Routes>
       </main>

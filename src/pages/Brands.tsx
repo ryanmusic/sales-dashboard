@@ -149,60 +149,88 @@ export default function Brands() {
       </div>
 
       {/* Expiring Subscriptions */}
-      {expiringPlans.length > 0 && (
-        <div className="bg-navy-900 border border-amber-500/20 rounded-xl p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <h3 className="text-lg font-semibold text-amber-300">{t('expiringSubscriptions')}</h3>
-            <span className="text-xs text-slate-500">{t('expiringSubtitle')}</span>
+      {expiringPlans.length > 0 && (() => {
+        const enriched = expiringPlans.map((p: any) => {
+          const diffMs = new Date(p.expiryDate).getTime() - Date.now();
+          const days = Math.ceil(diffMs / 86400000);
+          return { ...p, days };
+        });
+        const overdue = enriched.filter(p => p.days < 0);
+        const within30 = enriched.filter(p => p.days >= 0 && p.days <= 30);
+        const within60 = enriched.filter(p => p.days > 30 && p.days <= 60);
+        const within90 = enriched.filter(p => p.days > 60 && p.days <= 90);
+
+        const tiers = [
+          { key: 'overdue', items: overdue, label: t('renewalOverdue'), color: 'red', borderColor: 'border-red-500/30' },
+          { key: '30d', items: within30, label: t('renewalUrgent'), color: 'red', borderColor: 'border-red-500/20' },
+          { key: '60d', items: within60, label: t('renewal60d'), color: 'amber', borderColor: 'border-amber-500/20' },
+          { key: '90d', items: within90, label: t('renewal90d'), color: 'blue', borderColor: 'border-blue-500/20' },
+        ].filter(tier => tier.items.length > 0);
+
+        const RenewalRow = ({ p }: { p: any }) => {
+          const absDays = Math.abs(p.days);
+          const isOverdue = p.days < 0;
+          const urgent = p.days >= 0 && p.days <= 7;
+          return (
+            <tr className={`border-b border-white/5 hover:bg-white/[0.02] ${isOverdue ? 'bg-red-500/[0.03]' : ''}`}>
+              <td className="py-2.5 px-4 text-slate-200">{p.fullName || p.email || p.phoneNumber || '—'}</td>
+              <td className="py-2.5 px-4 text-slate-400">{p.brandName}</td>
+              <td className="py-2.5 px-4 text-slate-300">{subscriptionLabel(p.subscriptionLevel, t)}</td>
+              <td className={`py-2.5 px-4 ${isOverdue ? 'text-red-400' : 'text-slate-400'}`}>{formatDate(p.expiryDate)}</td>
+              <td className="py-2.5 px-4">
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  isOverdue ? 'bg-red-500/20 text-red-400' : urgent ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/15 text-amber-400'
+                }`}>
+                  {isOverdue ? t('daysOverdue', { days: absDays }) : p.days === 0 ? t('expiresToday') : t('daysLeft', { days: p.days })}
+                </span>
+              </td>
+              <td className="py-2.5 px-4 text-right text-emerald-400">{p.balance ? formatCurrency(parseFloat(p.balance)) : '—'}</td>
+              <td className="py-2.5 px-4 text-xs text-slate-500">{p.email || p.phoneNumber || '—'}</td>
+            </tr>
+          );
+        };
+
+        return (
+          <div className="bg-navy-900 border border-amber-500/20 rounded-xl p-6 mb-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <h3 className="text-lg font-semibold text-amber-300">{t('expiringSubscriptions')}</h3>
+              <span className="text-xs text-slate-500">{t('expiringSubtitle')}</span>
+            </div>
+            <div className="flex items-center gap-3 mb-4 text-xs">
+              {overdue.length > 0 && <span className="px-2 py-0.5 rounded-full bg-red-500/15 text-red-400">{t('renewalOverdue')}: {overdue.length}</span>}
+              {within30.length > 0 && <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-300">{t('renewalUrgent')}: {within30.length}</span>}
+              {within60.length > 0 && <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">{t('renewal60d')}: {within60.length}</span>}
+              {within90.length > 0 && <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400">{t('renewal90d')}: {within90.length}</span>}
+            </div>
+            {tiers.map((tier) => (
+              <div key={tier.key} className="mb-4 last:mb-0">
+                <div className={`text-xs font-medium text-${tier.color}-400 mb-2 pl-1`}>{tier.label} ({tier.items.length})</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-slate-400 border-b border-white/5">
+                        <th className="text-left py-2 px-4 font-medium">{t('owner')}</th>
+                        <th className="text-left py-2 px-4 font-medium">{t('brand')}</th>
+                        <th className="text-left py-2 px-4 font-medium">{t('plan')}</th>
+                        <th className="text-left py-2 px-4 font-medium">{t('expiresOn')}</th>
+                        <th className="text-left py-2 px-4 font-medium"></th>
+                        <th className="text-right py-2 px-4 font-medium">{t('balance')}</th>
+                        <th className="text-left py-2 px-4 font-medium">{t('contact')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tier.items.map((p: any, i: number) => (
+                        <RenewalRow key={`${p.userId}-${i}`} p={p} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-slate-400 border-b border-white/5">
-                  <th className="text-left py-2 px-4 font-medium">{t('owner')}</th>
-                  <th className="text-left py-2 px-4 font-medium">{t('brand')}</th>
-                  <th className="text-left py-2 px-4 font-medium">{t('plan')}</th>
-                  <th className="text-left py-2 px-4 font-medium">{t('expiresOn')}</th>
-                  <th className="text-left py-2 px-4 font-medium"></th>
-                  <th className="text-right py-2 px-4 font-medium">{t('balance')}</th>
-                  <th className="text-left py-2 px-4 font-medium">{t('contact')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {expiringPlans.map((p: any, i: number) => {
-                  const diffMs = new Date(p.expiryDate).getTime() - Date.now();
-                  const days = Math.ceil(diffMs / 86400000);
-                  const overdue = days < 0;
-                  const absDays = Math.abs(days);
-                  const urgent = days >= 0 && days <= 7;
-                  return (
-                    <tr key={`${p.userId}-${i}`} className={`border-b border-white/5 hover:bg-white/[0.02] ${overdue ? 'bg-red-500/[0.03]' : ''}`}>
-                      <td className="py-2.5 px-4 text-slate-200">{p.fullName || p.email || p.phoneNumber || '—'}</td>
-                      <td className="py-2.5 px-4 text-slate-400">{p.brandName}</td>
-                      <td className="py-2.5 px-4">
-                        <span className="text-slate-300">{subscriptionLabel(p.subscriptionLevel, t)}</span>
-                      </td>
-                      <td className={`py-2.5 px-4 ${overdue ? 'text-red-400' : 'text-slate-400'}`}>{formatDate(p.expiryDate)}</td>
-                      <td className="py-2.5 px-4">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          overdue ? 'bg-red-500/20 text-red-400' : urgent ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/15 text-amber-400'
-                        }`}>
-                          {overdue ? t('daysOverdue', { days: absDays }) : days === 0 ? t('expiresToday') : t('daysLeft', { days })}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 text-right text-emerald-400">
-                        {p.balance ? formatCurrency(parseFloat(p.balance)) : '—'}
-                      </td>
-                      <td className="py-2.5 px-4 text-xs text-slate-500">{p.email || p.phoneNumber || '—'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Least Active Brands */}
       {leastActive.length > 0 && (
