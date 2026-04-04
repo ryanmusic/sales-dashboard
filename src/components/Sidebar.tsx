@@ -3,19 +3,19 @@ import { useI18n } from '../i18n';
 import { useAuth } from '../lib/auth';
 import type { Translations } from '../i18n/en';
 
-const navItems: { to: string; labelKey: keyof Translations; icon: React.FC }[] = [
+const navItems: { to: string; labelKey: keyof Translations; icon: React.FC; adminOnly?: boolean }[] = [
   { to: '/', labelKey: 'navOverview', icon: OverviewIcon },
   { to: '/brands', labelKey: 'navBrands', icon: BrandsIcon },
-  { to: '/creators', labelKey: 'navCreatorPayments', icon: CreatorsIcon },
+  { to: '/creators', labelKey: 'navCreatorPayments', icon: CreatorsIcon, adminOnly: true },
   { to: '/campaigns', labelKey: 'navCampaigns', icon: CampaignsIcon },
-  { to: '/vip', labelKey: 'navVip', icon: VipIcon },
+  { to: '/vip', labelKey: 'navVip', icon: VipIcon, adminOnly: true },
   { to: '/support', labelKey: 'navSupport', icon: SupportIcon },
   { to: '/create-account', labelKey: 'navCreateAccount', icon: CreateAccountIcon },
 ];
 
 export default function Sidebar() {
   const { lang, setLang, t } = useI18n();
-  const { logout } = useAuth();
+  const { logout, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -29,10 +29,13 @@ export default function Sidebar() {
         <h1 className="text-lg font-bold tracking-tight">
           <span className="text-blue-400">Tellit</span> {t('dashboard')}
         </h1>
+        <span className={`text-[10px] mt-1 px-2 py-0.5 rounded-full inline-block ${isAdmin ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-500/15 text-slate-400'}`}>
+          {isAdmin ? 'Admin' : 'Operator'}
+        </span>
       </div>
 
       <nav className="flex-1 py-4 px-3 space-y-1">
-        {navItems.map(({ to, labelKey, icon: Icon }) => (
+        {navItems.filter(({ adminOnly }) => !adminOnly || isAdmin).map(({ to, labelKey, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}

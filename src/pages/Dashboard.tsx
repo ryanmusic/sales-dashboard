@@ -14,11 +14,13 @@ import {
 import { api } from '../lib/api';
 import { formatCurrency, formatDate, subscriptionLabel, statusClass, statusLabel } from '../lib/format';
 import { useI18n } from '../i18n';
+import { useAuth } from '../lib/auth';
 import StatCard from '../components/StatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Dashboard() {
   const { t } = useI18n();
+  const { isAdmin } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [mrr, setMrr] = useState<any[]>([]);
@@ -31,8 +33,8 @@ export default function Dashboard() {
   useEffect(() => {
     Promise.all([
       api.dashboard.all(),
-      api.revenue.all(),
-      api.dashboard.finance(),
+      isAdmin ? api.revenue.all() : Promise.resolve({ mrr: [], deposits: { records: [], total: 0 }, breakdown: [] }),
+      isAdmin ? api.dashboard.finance() : Promise.resolve(null),
     ])
       .then(([dashData, revData, finData]) => {
         setFinance(finData);
@@ -78,38 +80,40 @@ export default function Dashboard() {
       <h2 className="text-2xl font-bold mb-6">{t('navOverview')}</h2>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
-        <StatCard
-          title={t('totalRevenue')}
-          value={formatCurrency(stats?.totalRevenue || 0)}
-          subtitle={t('allTime')}
-          color="blue"
-        />
-        <StatCard
-          title={t('profit')}
-          value={formatCurrency(stats?.profit || 0)}
-          subtitle={t('profitSubtitle')}
-          color="emerald"
-        />
-        <StatCard
-          title={t('revenueLast30d')}
-          value={formatCurrency(stats?.revenueLast30d || 0)}
-          subtitle={t('last30Days')}
-          color="violet"
-        />
-        <StatCard
-          title={t('totalDeposits')}
-          value={formatCurrency(totalDeposits)}
-          color="amber"
-        />
-        <StatCard
-          title={t('totalCommissions')}
-          value={formatCurrency(totalCommissions)}
-          color="blue"
-        />
-      </div>
+      {isAdmin && (
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
+          <StatCard
+            title={t('totalRevenue')}
+            value={formatCurrency(stats?.totalRevenue || 0)}
+            subtitle={t('allTime')}
+            color="blue"
+          />
+          <StatCard
+            title={t('profit')}
+            value={formatCurrency(stats?.profit || 0)}
+            subtitle={t('profitSubtitle')}
+            color="emerald"
+          />
+          <StatCard
+            title={t('revenueLast30d')}
+            value={formatCurrency(stats?.revenueLast30d || 0)}
+            subtitle={t('last30Days')}
+            color="violet"
+          />
+          <StatCard
+            title={t('totalDeposits')}
+            value={formatCurrency(totalDeposits)}
+            color="amber"
+          />
+          <StatCard
+            title={t('totalCommissions')}
+            value={formatCurrency(totalCommissions)}
+            color="blue"
+          />
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      {isAdmin && <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <StatCard
           title={t('creatorPayouts')}
           value={formatCurrency(stats?.totalCreatorPayouts || 0)}
@@ -128,8 +132,9 @@ export default function Dashboard() {
           subtitle={t('uniqueTypes')}
           color="violet"
         />
-      </div>
+      </div>}
 
+      {isAdmin && <>
       {/* Revenue Chart */}
       <div className="bg-navy-900 border border-white/5 rounded-xl p-6 mb-8">
         <h3 className="text-lg font-semibold mb-4">{t('monthlyRevenue')}</h3>
@@ -241,8 +246,10 @@ export default function Dashboard() {
         )}
       </div>
 
+      </>}
+
       {/* Finance Section */}
-      {finance && (
+      {isAdmin && finance && (
         <>
           {/* AR/AP Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 mb-6">

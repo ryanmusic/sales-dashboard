@@ -11,7 +11,7 @@ import VipDashboard from './pages/VipDashboard';
 import Login from './pages/Login';
 
 function ProtectedLayout() {
-  const { token } = useAuth();
+  const { token, isAdmin } = useAuth();
   if (!token) return <Navigate to="/login" replace />;
 
   return (
@@ -21,9 +21,9 @@ function ProtectedLayout() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/brands" element={<Brands />} />
-          <Route path="/creators" element={<CreatorPayments />} />
+          <Route path="/creators" element={isAdmin ? <CreatorPayments /> : <Navigate to="/" replace />} />
           <Route path="/campaigns" element={<Campaigns />} />
-          <Route path="/vip" element={<VipDashboard />} />
+          <Route path="/vip" element={isAdmin ? <VipDashboard /> : <Navigate to="/" replace />} />
           <Route path="/support" element={<Support />} />
           <Route path="/create-account" element={<CreateAccount />} />
         </Routes>
