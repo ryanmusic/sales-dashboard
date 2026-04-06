@@ -818,6 +818,12 @@ export default function Campaigns() {
                 <div className="text-xs text-slate-500 mb-1">{t('platforms')}</div>
                 <div className="text-slate-300 text-sm">{detailCampaign.acceptedPlatforms?.replace(/[{}]/g, '') || '—'}</div>
               </div>
+              <div>
+                <div className="text-xs text-slate-500 mb-1">{t('reservationScreening')}</div>
+                <div className={`text-sm ${detailCampaign.enableReservationScreening ? 'text-amber-400' : 'text-slate-400'}`}>
+                  {detailCampaign.enableReservationScreening ? t('yes') : t('no')}
+                </div>
+              </div>
             </div>
 
             {detailCampaign.isFreeProductIncluded && (

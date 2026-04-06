@@ -187,6 +187,7 @@ const zh: Translations = {
   freeProductValue: '免費商品價值',
   yes: '是',
   no: '否',
+  reservationScreening: '需審核預約',
   close: '關閉',
   noSlotsAvailable: '名額已滿，無法重新啟用此預約',
   approvedAt: '核准時間',

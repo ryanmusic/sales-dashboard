@@ -210,6 +210,7 @@ const en = {
   freeProductValue: 'Free Product Value',
   yes: 'Yes',
   no: 'No',
+  reservationScreening: 'Reservation Screening',
   close: 'Close',
   noSlotsAvailable: 'No slots available — cannot reactivate this reservation',
   approvedAt: 'Approved',
