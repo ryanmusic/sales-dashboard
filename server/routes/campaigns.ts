@@ -43,9 +43,9 @@ campaignsRoutes.get('/all', async (_req, res) => {
           (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id) as "reservationCount"
         FROM "attention-cards" ac
         JOIN stores s ON s.id = ac."storeId"
-        JOIN brands b ON b.id::text = s."brandId"::text
-        JOIN user_brands ub ON ub."brandId" = b.id AND ub.role = 'owner'
-        JOIN users u ON u.id::text = ub."userId"::text
+        LEFT JOIN brands b ON b.id::text = s."brandId"::text
+        LEFT JOIN user_brands ub ON ub."brandId" = b.id AND ub.role = 'owner'
+        LEFT JOIN users u ON u.id::text = ub."userId"::text
         ORDER BY ac."createTimestamp" DESC
         LIMIT 50
       `),
@@ -79,9 +79,9 @@ campaignsRoutes.get('/all', async (_req, res) => {
           (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id) as "reservationCount"
         FROM "attention-cards" ac
         JOIN stores s ON s.id = ac."storeId"
-        JOIN brands b ON b.id::text = s."brandId"::text
-        JOIN user_brands ub ON ub."brandId" = b.id AND ub.role = 'owner'
-        JOIN users u ON u.id::text = ub."userId"::text
+        LEFT JOIN brands b ON b.id::text = s."brandId"::text
+        LEFT JOIN user_brands ub ON ub."brandId" = b.id AND ub.role = 'owner'
+        LEFT JOIN users u ON u.id::text = ub."userId"::text
         WHERE ac.status = 'active'
           AND ac."endTimestamp" IS NOT NULL
           AND ac."endTimestamp" >= NOW() - INTERVAL '7 days'
@@ -161,9 +161,9 @@ campaignsRoutes.get('/', async (req, res) => {
           (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id) as "reservationCount"
         FROM "attention-cards" ac
         JOIN stores s ON s.id = ac."storeId"
-        JOIN brands b ON b.id::text = s."brandId"::text
-        JOIN user_brands ub ON ub."brandId" = b.id AND ub.role = 'owner'
-        JOIN users u ON u.id::text = ub."userId"::text
+        LEFT JOIN brands b ON b.id::text = s."brandId"::text
+        LEFT JOIN user_brands ub ON ub."brandId" = b.id AND ub.role = 'owner'
+        LEFT JOIN users u ON u.id::text = ub."userId"::text
         ${whereClause}
         ORDER BY ac."createTimestamp" DESC
         LIMIT $1 OFFSET $2
@@ -186,9 +186,9 @@ campaignsRoutes.get('/', async (req, res) => {
           SELECT COUNT(*) as count
           FROM "attention-cards" ac
           JOIN stores s ON s.id = ac."storeId"
-          JOIN brands b ON b.id::text = s."brandId"::text
-          JOIN user_brands ub ON ub."brandId" = b.id AND ub.role = 'owner'
-          JOIN users u ON u.id::text = ub."userId"::text
+          LEFT JOIN brands b ON b.id::text = s."brandId"::text
+          LEFT JOIN user_brands ub ON ub."brandId" = b.id AND ub.role = 'owner'
+          LEFT JOIN users u ON u.id::text = ub."userId"::text
           ${countWhere}
         `, countParams);
       })(),
