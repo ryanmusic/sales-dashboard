@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { formatCurrency, formatDate, formatDateTime, statusClass, statusLabel } from '../lib/format';
+import { formatCurrency, formatDate, formatDateTime, statusClass, statusLabel, subscriptionLabel } from '../lib/format';
 import { useI18n } from '../i18n';
 import StatCard from '../components/StatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -281,7 +281,7 @@ export default function Campaigns() {
                   <th className="text-center py-2 pr-2 font-medium">{t('submissionAccepted')}</th>
                   <th className="text-left py-2 pr-2 font-medium">{t('plan')}</th>
                   <th className="text-center py-2 pr-2 font-medium">{t('remainingDays')}</th>
-                  <th className="text-left py-2 pr-2 font-medium">{t('owner')}</th>
+                  <th className="text-left py-2 pr-2 font-medium">{t('advertiser')}</th>
                   <th className="text-left py-2 font-medium"></th>
                 </tr>
               </thead>
@@ -313,7 +313,7 @@ export default function Campaigns() {
                         <td className="py-1.5 pr-2 text-center text-slate-300">{c.bookedCount || 0}</td>
                         <td className="py-1.5 pr-2 text-center text-blue-400">{c.usedCount || 0}</td>
                         <td className="py-1.5 pr-2 text-center text-emerald-400">{c.acceptedSubmissions || 0}</td>
-                        <td className="py-1.5 pr-2 text-slate-400 whitespace-nowrap">{c.subscriptionLevel || 'free'}</td>
+                        <td className="py-1.5 pr-2 text-slate-400 whitespace-nowrap">{subscriptionLabel(c.subscriptionLevel || 'free', t)}</td>
                         <td className="py-1.5 pr-2 text-center">
                           <span className={`px-1.5 py-0.5 rounded-full ${
                             overdue ? 'bg-red-500/15 text-red-400' : days <= 7 ? 'bg-red-500/10 text-red-300' : 'bg-amber-500/15 text-amber-400'

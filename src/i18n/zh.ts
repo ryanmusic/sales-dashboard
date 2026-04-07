@@ -176,6 +176,7 @@ const zh: Translations = {
   remainingSlots: '剩餘名額',
   pendingLabel: '待確認',
   remainingDays: '剩餘天數',
+  advertiser: '廣告主',
   showRejected: '顯示 {count} 筆已拒絕',
   hideRejected: '隱藏已拒絕',
   campaignDetails: '活動詳情',

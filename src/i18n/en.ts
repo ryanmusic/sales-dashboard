@@ -199,6 +199,7 @@ const en = {
   remainingSlots: 'Remaining',
   pendingLabel: 'Pending',
   remainingDays: 'Days Left',
+  advertiser: 'Advertiser',
   showRejected: 'Show {count} rejected',
   hideRejected: 'Hide rejected',
   campaignDetails: 'Campaign Details',
