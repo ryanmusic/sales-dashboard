@@ -80,7 +80,13 @@ campaignsRoutes.get('/all', async (_req, res) => {
           u."fullName" as "ownerName",
           u.email as "ownerEmail",
           u."phoneNumber" as "ownerPhone",
-          (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id) as "reservationCount"
+          s.address as "storeAddress",
+          u."subscriptionLevel",
+          (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id) as "reservationCount",
+          (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id AND r.status IN ('booked', 'boooked')) as "bookedCount",
+          (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id AND r.status = 'pending') as "pendingCount",
+          (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id AND r.status = 'used') as "usedCount",
+          (SELECT COUNT(*) FROM "post-submissions" ps WHERE ps."callCardId" = ac.id AND ps.status = 'accepted') as "acceptedSubmissions"
         FROM "attention-cards" ac
         JOIN stores s ON s.id = ac."storeId"
         LEFT JOIN brands b ON b.id::text = s."brandId"::text
@@ -89,9 +95,9 @@ campaignsRoutes.get('/all', async (_req, res) => {
         WHERE ac.status = 'active'
           AND ac."endTimestamp" IS NOT NULL
           AND ac."endTimestamp" >= NOW() - INTERVAL '7 days'
-          AND ac."endTimestamp" <= NOW() + INTERVAL '14 days'
+          AND ac."endTimestamp" <= NOW() + INTERVAL '30 days'
         ORDER BY ac."endTimestamp" ASC
-        LIMIT 20
+        LIMIT 50
       `),
     ]);
 

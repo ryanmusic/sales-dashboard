@@ -265,81 +265,76 @@ export default function Campaigns() {
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
             <h3 className="text-lg font-semibold">{t('expiringCampaigns')}</h3>
+            <span className="text-xs text-slate-500 ml-2">{(data.expiring as any[]).length} {t('total')}</span>
           </div>
-          <p className="text-xs text-slate-500 mb-4">{t('expiringCampaignsSubtitle')}</p>
-          <div className="space-y-2">
-            {(data.expiring as any[]).map((c: any) => {
-              const diffMs = new Date(c.endTimestamp).getTime() - Date.now();
-              const days = Math.ceil(diffMs / 86400000);
-              const overdue = days < 0;
-              const absDays = Math.abs(days);
-              const full = (c.currentSlots || 0) >= (c.slots || 0);
-              const urgent = !full && (overdue || days <= 3);
-              const isExpanded = expandedExpiring === c.id;
-              const campaignReservations = reservations[c.id] || [];
-              return (
-                <div
-                  key={c.id}
-                  className={`rounded-lg ${
-                    full
-                      ? 'bg-emerald-500/15 border border-emerald-500/40'
-                      : urgent
-                        ? 'bg-red-500/5 border border-red-500/20'
-                        : 'bg-white/[0.02] border border-white/5'
-                  }`}
-                >
-                  <div
-                    className="flex items-center justify-between p-3 cursor-pointer"
-                    onClick={() => toggleExpiring(c.id)}
-                  >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-slate-500 text-xs">{isExpanded ? '▾' : '▸'}</span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-200 font-medium text-sm truncate">{c.title}</span>
-                          <span className="text-xs text-slate-500">{c.storeName}</span>
+          <p className="text-xs text-slate-500 mb-3">{t('expiringCampaignsSubtitle')}</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-slate-400 border-b border-white/5">
+                  <th className="text-left py-2 pr-2 font-medium">{t('store')}</th>
+                  <th className="text-left py-2 pr-2 font-medium">{t('campaignTitle')}</th>
+                  <th className="text-center py-2 pr-2 font-medium">{t('remainingSlots')}</th>
+                  <th className="text-center py-2 pr-2 font-medium">{t('pendingLabel')}</th>
+                  <th className="text-center py-2 pr-2 font-medium">{t('reservationBooked')}</th>
+                  <th className="text-center py-2 pr-2 font-medium">{t('reservationUsed')}</th>
+                  <th className="text-center py-2 pr-2 font-medium">{t('submissionAccepted')}</th>
+                  <th className="text-left py-2 pr-2 font-medium">{t('plan')}</th>
+                  <th className="text-center py-2 pr-2 font-medium">{t('vipInactive')}</th>
+                  <th className="text-left py-2 pr-2 font-medium">{t('owner')}</th>
+                  <th className="text-left py-2 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.expiring as any[]).map((c: any) => {
+                  const diffMs = new Date(c.endTimestamp).getTime() - Date.now();
+                  const days = Math.ceil(diffMs / 86400000);
+                  const overdue = days < 0;
+                  const absDays = Math.abs(days);
+                  const remaining = (c.slots || 0) - (c.slots - (c.currentSlots || 0));
+                  const full = remaining <= 0;
+                  const urgent = !full && (overdue || days <= 3);
+                  const isExpanded = expandedExpiring === c.id;
+                  const campaignReservations = reservations[c.id] || [];
+                  return (
+                    <Fragment key={c.id}>
+                      <tr
+                        className={`border-b border-white/5 cursor-pointer hover:bg-white/[0.02] transition-colors ${
+                          full ? 'bg-emerald-500/[0.05]' : urgent ? 'bg-red-500/[0.03]' : ''
+                        }`}
+                        onClick={() => toggleExpiring(c.id)}
+                      >
+                        <td className="py-1.5 pr-2 text-slate-300 whitespace-nowrap">{c.storeName}</td>
+                        <td className="py-1.5 pr-2 max-w-[160px]">
+                          <span className="text-slate-200 truncate block max-w-[160px]" title={c.title}>{c.title}</span>
+                        </td>
+                        <td className={`py-1.5 pr-2 text-center font-medium ${full ? 'text-emerald-400' : remaining <= 2 ? 'text-red-400' : 'text-slate-300'}`}>{c.currentSlots || 0}/{c.slots}</td>
+                        <td className={`py-1.5 pr-2 text-center ${parseInt(c.pendingCount) > 0 ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-slate-500'}`}>{c.pendingCount || 0}</td>
+                        <td className="py-1.5 pr-2 text-center text-slate-300">{c.bookedCount || 0}</td>
+                        <td className="py-1.5 pr-2 text-center text-blue-400">{c.usedCount || 0}</td>
+                        <td className="py-1.5 pr-2 text-center text-emerald-400">{c.acceptedSubmissions || 0}</td>
+                        <td className="py-1.5 pr-2 text-slate-400 whitespace-nowrap">{c.subscriptionLevel || 'free'}</td>
+                        <td className="py-1.5 pr-2 text-center">
+                          <span className={`px-1.5 py-0.5 rounded-full ${
+                            overdue ? 'bg-red-500/15 text-red-400' : days <= 7 ? 'bg-red-500/10 text-red-300' : 'bg-amber-500/15 text-amber-400'
+                          }`}>
+                            {overdue ? `-${absDays}d` : `${days}d`}
+                          </span>
+                        </td>
+                        <td className="py-1.5 pr-2 text-slate-500 whitespace-nowrap">{c.ownerName || c.ownerEmail || '—'}</td>
+                        <td className="py-1.5">
                           <button
                             onClick={(e) => { e.stopPropagation(); setDetailCampaign(c); }}
-                            className="text-slate-500 hover:text-blue-400 transition-colors text-xs"
+                            className="text-slate-500 hover:text-blue-400 transition-colors"
                             title={t('campaignDetails')}
                           >
                             ⓘ
                           </button>
-                        </div>
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          {c.ownerName || c.ownerEmail || '—'}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                      <div className="text-right">
-                        <div className="text-xs text-slate-500">{t('remainingSlots')}</div>
-                        <div className={`text-sm font-medium ${full ? 'text-emerald-400' : urgent ? 'text-red-400' : 'text-slate-300'}`}>
-                          {t('slotsUsed', { used: c.currentSlots || 0, total: c.slots })}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`text-xs ${overdue ? 'text-red-400' : 'text-slate-500'}`}>
-                          {formatDate(c.endTimestamp)}
-                        </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          full
-                            ? 'bg-emerald-500/15 text-emerald-400'
-                            : urgent
-                              ? 'bg-red-500/15 text-red-400'
-                              : 'bg-amber-500/15 text-amber-400'
-                        }`}>
-                          {overdue
-                            ? t('ended', { days: absDays })
-                            : days === 0
-                              ? t('endsToday')
-                              : t('endsIn', { days: absDays })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                        </td>
+                      </tr>
                   {isExpanded && (
-                    <div className="px-3 pb-3 pt-1 border-t border-white/5">
+                    <tr className="border-b border-white/5 bg-white/[0.015]">
+                    <td colSpan={11} className="px-3 pb-3 pt-1">
                       {loadingReservations === c.id ? (
                         <div className="text-sm text-slate-500 py-3 text-center">Loading...</div>
                       ) : campaignReservations.length === 0 ? (
@@ -467,11 +462,14 @@ export default function Campaigns() {
                           </>
                         );
                       })()}
-                    </div>
+                    </td>
+                    </tr>
                   )}
-                </div>
-              );
-            })}
+                  </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

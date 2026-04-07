@@ -197,6 +197,7 @@ const en = {
   ended: '{days}d ago',
   endsToday: 'Today',
   remainingSlots: 'Remaining',
+  pendingLabel: 'Pending',
   showRejected: 'Show {count} rejected',
   hideRejected: 'Hide rejected',
   campaignDetails: 'Campaign Details',
