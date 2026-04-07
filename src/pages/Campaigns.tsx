@@ -664,8 +664,8 @@ export default function Campaigns() {
                               <tbody>
                                 {filtered.map((r: any) => (
                                   <tr key={r.id} className="border-t border-white/5">
-                                    <td className="py-1 pr-2 whitespace-nowrap">
-                                      <button onClick={(e) => { e.stopPropagation(); handleCreatorClick(r.playerId); }} className="text-slate-300 hover:text-blue-400 transition-colors cursor-pointer text-xs">{r.creatorName || '—'}</button>
+                                    <td className="py-1 pr-2 max-w-[80px]">
+                                      <button onClick={(e) => { e.stopPropagation(); handleCreatorClick(r.playerId); }} className="text-slate-300 hover:text-blue-400 transition-colors cursor-pointer text-xs truncate block max-w-[80px]" title={r.creatorName}>{r.creatorName || '—'}</button>
                                     </td>
                                     <td className="py-1 pr-2 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? <a href={`https://instagram.com/${r.igUsername}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-blue-400 transition-colors">@{r.igUsername}</a> : '—'}</td>
                                     <td className="py-1 pr-2 text-slate-500 text-xs whitespace-nowrap">{r.creatorEmail || r.creatorPhone || '—'}</td>
