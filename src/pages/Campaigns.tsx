@@ -972,7 +972,7 @@ export default function Campaigns() {
                           <tr key={r.id} className="border-t border-white/5">
                             <td className="py-1.5 pr-3 text-slate-200">{r.campaignTitle}</td>
                             <td className="py-1.5 pr-3 text-slate-400">{r.storeName}</td>
-                            <td className="py-1.5 pr-3"><span className={`px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>{reservationStatusLabel(r.status)}</span></td>
+                            <td className="py-1.5 pr-3 whitespace-nowrap"><span className={`px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>{reservationStatusLabel(r.status)}</span></td>
                             <td className="py-1.5 pr-3 text-slate-400">{r.approvedAt ? formatDateTime(r.approvedAt) : '—'}</td>
                             <td className="py-1.5 text-slate-400">{r.expireTimestamp ? formatDateTime(r.expireTimestamp) : '—'}</td>
                           </tr>
