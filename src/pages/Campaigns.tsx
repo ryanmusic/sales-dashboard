@@ -280,7 +280,7 @@ export default function Campaigns() {
                   <th className="text-center py-2 pr-2 font-medium">{t('reservationUsed')}</th>
                   <th className="text-center py-2 pr-2 font-medium">{t('submissionAccepted')}</th>
                   <th className="text-left py-2 pr-2 font-medium">{t('plan')}</th>
-                  <th className="text-center py-2 pr-2 font-medium">{t('vipInactive')}</th>
+                  <th className="text-center py-2 pr-2 font-medium">{t('remainingDays')}</th>
                   <th className="text-left py-2 pr-2 font-medium">{t('owner')}</th>
                   <th className="text-left py-2 font-medium"></th>
                 </tr>
