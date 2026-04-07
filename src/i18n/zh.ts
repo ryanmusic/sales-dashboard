@@ -159,7 +159,7 @@ const zh: Translations = {
   reservationExpiry: '到期日',
   reservationBooked: '已預約',
   reservationPending: '待確認',
-  reservationUsed: '已錄取',
+  reservationUsed: '已完成',
   reservationExpired: '已過期',
   reservationCanceled: '已取消',
   reservationRejected: '已拒絕',
