@@ -213,6 +213,26 @@ const zh: Translations = {
   totalLikes: '愛心數',
   submissionAccepted: '已接受',
 
+  // Bonus
+  navBonus: '加碼金',
+  bonusTitle: '全家加碼金',
+  bonusSelectCampaign: '選擇活動',
+  bonusCreatorList: '創作者成效',
+  submissionLabel: '投稿',
+  comments: '留言',
+  shares: '分享',
+  sortBy: '排序',
+  refreshAll: '刷新全部 Phyllo',
+  refreshingAll: '刷新中...',
+  confirmRefreshAll: '確定要刷新此活動所有投稿的 Phyllo 數據嗎？',
+  bonusSelected: '已選擇',
+  bonusAmountPlaceholder: '金額 (TWD)',
+  bonusDescPlaceholder: '說明',
+  awardBonus: '加碼',
+  awarding: '加碼中...',
+  confirmAward: '確定要發放 ${amount} 元給 {count} 位創作者嗎？',
+  awardSuccess: '已成功發放加碼金給 {count} 位創作者！',
+
   // Support
   navSupport: '客服',
   supportTitle: '客服後台',

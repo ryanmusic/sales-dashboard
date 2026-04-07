@@ -87,6 +87,13 @@ export const api = {
     resubmitPost: (campaignId: string, reservationId: string, instagramUrl: string) =>
       postJSON<any>(`/campaigns/${campaignId}/reservations/${reservationId}/resubmit`, { instagramUrl }),
   },
+  transactions: {
+    bonusCampaigns: () => fetchJSON<any[]>('/transactions/campaigns'),
+    bonusReservations: (campaignId: string) => fetchJSON<any[]>(`/transactions/campaigns/${campaignId}/reservations`),
+    refreshAllPosts: (campaignId: string) => postJSON<any>(`/transactions/campaigns/${campaignId}/refresh-all`, {}),
+    award: (creatorIds: string[], amount: number, description: string) =>
+      postJSON<any>('/transactions/award', { creatorIds, amount, description }),
+  },
   vip: {
     scoring: () => fetchJSON<any>('/vip/scoring'),
   },

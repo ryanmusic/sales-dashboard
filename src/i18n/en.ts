@@ -236,6 +236,26 @@ const en = {
   totalLikes: 'Likes',
   submissionAccepted: 'Accepted',
 
+  // Bonus
+  navBonus: 'Bonus',
+  bonusTitle: 'FamilyMart Bonus',
+  bonusSelectCampaign: 'Select Campaign',
+  bonusCreatorList: 'Creator Performance',
+  submissionLabel: 'Submission',
+  comments: 'Comments',
+  shares: 'Shares',
+  sortBy: 'Sort',
+  refreshAll: 'Refresh All Phyllo',
+  refreshingAll: 'Refreshing...',
+  confirmRefreshAll: 'Refresh Phyllo data for all submissions in this campaign?',
+  bonusSelected: 'Selected',
+  bonusAmountPlaceholder: 'Amount (TWD)',
+  bonusDescPlaceholder: 'Description',
+  awardBonus: 'Award Bonus',
+  awarding: 'Awarding...',
+  confirmAward: 'Award ${amount} TWD to {count} creators?',
+  awardSuccess: 'Bonus awarded to {count} creators!',
+
   // Support
   navSupport: 'Support',
   supportTitle: 'Customer Support',

@@ -7,6 +7,7 @@ import CreatorPayments from './pages/CreatorPayments';
 import Campaigns from './pages/Campaigns';
 import CreateAccount from './pages/CreateAccount';
 import Support from './pages/Support';
+import Bonus from './pages/Bonus';
 import VipDashboard from './pages/VipDashboard';
 import Login from './pages/Login';
 
@@ -25,6 +26,7 @@ function ProtectedLayout() {
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/vip" element={isAdmin ? <VipDashboard /> : <Navigate to="/" replace />} />
           <Route path="/support" element={<Support />} />
+          <Route path="/bonus" element={<Bonus />} />
           <Route path="/create-account" element={<CreateAccount />} />
         </Routes>
       </main>
