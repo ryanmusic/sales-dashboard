@@ -295,6 +295,7 @@ creatorsRoutes.get('/lookup', async (req, res) => {
     const [reservations, submissions, payouts] = await Promise.all([
       query(`
         SELECT r.id, r.status, r."createTimestamp", r."expireTimestamp", r."approvedAt", r."usedAt",
+          r."callCardId",
           ac.title as "campaignTitle", ac.status as "campaignStatus",
           s.name as "storeName"
         FROM "cc-slot-reservations" r
@@ -306,6 +307,7 @@ creatorsRoutes.get('/lookup', async (req, res) => {
       `, [uid]),
       query(`
         SELECT ps.id, ps.status, ps."createTimestamp", ps."acceptedAt",
+          ps."callCardId",
           ps."postSnapshot"->>'view_count' as "viewCount",
           ps."postSnapshot"->>'like_count' as "likeCount",
           p."contentObj"->>'url' as "postUrl",

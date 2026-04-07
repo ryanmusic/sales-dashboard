@@ -992,18 +992,32 @@ export default function Campaigns() {
                         <th className="text-left py-1.5 pr-3">{t('status')}</th>
                         <th className="text-left py-1.5 pr-3">{t('postInfo')}</th>
                         <th className="text-right py-1.5 pr-3">{t('totalViews')}</th>
-                        <th className="text-right py-1.5">{t('totalLikes')}</th>
+                        <th className="text-right py-1.5 pr-3">{t('totalLikes')}</th>
+                        <th className="text-left py-1.5">{t('actions')}</th>
                       </tr></thead>
                       <tbody>
-                        {creatorLookup.submissions.map((s: any) => (
+                        {creatorLookup.submissions.map((s: any) => {
+                          const matchingRes = creatorLookup.reservations.find((r: any) => r.campaignId === s.callCardId || r.callCardId === s.callCardId);
+                          return (
                           <tr key={s.id} className="border-t border-white/5">
                             <td className="py-1.5 pr-3 text-slate-200">{s.campaignTitle}</td>
-                            <td className="py-1.5 pr-3"><span className={`px-2 py-0.5 rounded-full ${s.status === 'accepted' ? 'bg-emerald-500/15 text-emerald-400' : s.status === 'rejected' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400'}`}>{submissionStatusLabel(s.status)}</span></td>
+                            <td className="py-1.5 pr-3 whitespace-nowrap"><span className={`px-2 py-0.5 rounded-full ${s.status === 'accepted' ? 'bg-emerald-500/15 text-emerald-400' : s.status === 'rejected' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400'}`}>{submissionStatusLabel(s.status)}</span></td>
                             <td className="py-1.5 pr-3">{s.postUrl ? <a href={s.postUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">{t('viewPost')}</a> : '—'}</td>
                             <td className="py-1.5 pr-3 text-right text-violet-400 font-mono">{s.viewCount ? parseInt(s.viewCount).toLocaleString() : '—'}</td>
-                            <td className="py-1.5 text-right text-pink-400 font-mono">{s.likeCount ? parseInt(s.likeCount).toLocaleString() : '—'}</td>
+                            <td className="py-1.5 pr-3 text-right text-pink-400 font-mono">{s.likeCount ? parseInt(s.likeCount).toLocaleString() : '—'}</td>
+                            <td className="py-1.5">
+                              {matchingRes && (
+                                <button
+                                  onClick={() => { setResubmitTarget({ campaignId: s.callCardId, reservationId: matchingRes.id, creatorName: creatorLookup.user.fullName || creatorLookup.user.igUsername || '—' }); setCreatorLookup(null); }}
+                                  className="px-1.5 py-0.5 text-xs bg-violet-500/20 text-violet-400 rounded hover:bg-violet-500/30 transition-colors"
+                                >
+                                  {t('resubmit')}
+                                </button>
+                              )}
+                            </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   ) : <div className="text-slate-500 text-xs">{t('noResults')}</div>}
