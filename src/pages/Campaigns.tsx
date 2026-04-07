@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { formatCurrency, formatDate, formatDateTime } from '../lib/format';
+import { formatCurrency, formatDate, formatDateTime, statusClass, statusLabel } from '../lib/format';
 import { useI18n } from '../i18n';
 import StatCard from '../components/StatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -217,6 +217,15 @@ export default function Campaigns() {
       canceled: t('reservationCanceled'),
       rejected: t('reservationRejected'),
       redeemed: t('reservationRedeemed'),
+    };
+    return map[status] || status;
+  };
+
+  const submissionStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      accepted: t('submissionAccepted'),
+      pending_approval: t('reservationPending'),
+      rejected: t('reservationRejected'),
     };
     return map[status] || status;
   };
@@ -537,7 +546,7 @@ export default function Campaigns() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-200 font-medium max-w-[300px] truncate">{c.title}</span>
+                          <span className="text-slate-200 font-medium max-w-[200px] truncate block" title={c.title}>{c.title}</span>
                           <button
                             onClick={(e) => { e.stopPropagation(); setDetailCampaign(c); }}
                             className="text-slate-500 hover:text-blue-400 transition-colors text-xs shrink-0"
@@ -958,7 +967,7 @@ export default function Campaigns() {
                           <tr key={r.id} className="border-t border-white/5">
                             <td className="py-1.5 pr-3 text-slate-200">{r.campaignTitle}</td>
                             <td className="py-1.5 pr-3 text-slate-400">{r.storeName}</td>
-                            <td className="py-1.5 pr-3"><span className={`px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>{r.status}</span></td>
+                            <td className="py-1.5 pr-3"><span className={`px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>{reservationStatusLabel(r.status)}</span></td>
                             <td className="py-1.5 pr-3 text-slate-400">{r.approvedAt ? formatDateTime(r.approvedAt) : '—'}</td>
                             <td className="py-1.5 text-slate-400">{r.expireTimestamp ? formatDateTime(r.expireTimestamp) : '—'}</td>
                           </tr>
@@ -984,7 +993,7 @@ export default function Campaigns() {
                         {creatorLookup.submissions.map((s: any) => (
                           <tr key={s.id} className="border-t border-white/5">
                             <td className="py-1.5 pr-3 text-slate-200">{s.campaignTitle}</td>
-                            <td className="py-1.5 pr-3"><span className={`px-2 py-0.5 rounded-full ${s.status === 'accepted' ? 'bg-emerald-500/15 text-emerald-400' : s.status === 'rejected' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400'}`}>{s.status}</span></td>
+                            <td className="py-1.5 pr-3"><span className={`px-2 py-0.5 rounded-full ${s.status === 'accepted' ? 'bg-emerald-500/15 text-emerald-400' : s.status === 'rejected' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400'}`}>{submissionStatusLabel(s.status)}</span></td>
                             <td className="py-1.5 pr-3">{s.postUrl ? <a href={s.postUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">{t('viewPost')}</a> : '—'}</td>
                             <td className="py-1.5 pr-3 text-right text-violet-400 font-mono">{s.viewCount ? parseInt(s.viewCount).toLocaleString() : '—'}</td>
                             <td className="py-1.5 text-right text-pink-400 font-mono">{s.likeCount ? parseInt(s.likeCount).toLocaleString() : '—'}</td>
@@ -1012,7 +1021,7 @@ export default function Campaigns() {
                             <td className="py-1.5 pr-3 text-slate-400">{formatDate(p.createTimestamp)}</td>
                             <td className="py-1.5 pr-3 text-right font-mono text-slate-300">{formatCurrency(parseFloat(p.amount))}</td>
                             <td className="py-1.5 pr-3 text-right font-mono text-emerald-400">{p.net ? formatCurrency(parseFloat(p.net)) : '—'}</td>
-                            <td className="py-1.5"><span className={`px-2 py-0.5 rounded-full ${RESERVATION_COLORS[p.status] || 'bg-slate-500/15 text-slate-400'}`}>{p.status}</span></td>
+                            <td className="py-1.5"><span className={`badge ${statusClass(p.status)}`}>{statusLabel(p.status, t)}</span></td>
                           </tr>
                         ))}
                       </tbody>
