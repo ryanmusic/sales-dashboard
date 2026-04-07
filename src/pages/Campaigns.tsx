@@ -21,6 +21,7 @@ const RESERVATION_COLORS: Record<string, string> = {
   expired: 'bg-slate-500/15 text-slate-400',
   canceled: 'bg-red-500/15 text-red-400',
   rejected: 'bg-red-500/15 text-red-400',
+  redeemed: 'bg-violet-500/15 text-violet-400',
 };
 
 export default function Campaigns() {
@@ -40,6 +41,10 @@ export default function Campaigns() {
   const [newCampaignEnd, setNewCampaignEnd] = useState('');
   const [showRejected, setShowRejected] = useState<Set<string>>(new Set());
   const [detailCampaign, setDetailCampaign] = useState<any | null>(null);
+  const [creatorLookup, setCreatorLookup] = useState<any | null>(null);
+  const [loadingLookup, setLoadingLookup] = useState(false);
+  const [resubmitTarget, setResubmitTarget] = useState<{ campaignId: string; reservationId: string; creatorName: string } | null>(null);
+  const [resubmitUrl, setResubmitUrl] = useState('');
 
   const fetchCampaigns = async (p: number, s: string, status?: string) => {
     const filter = status !== undefined ? status : statusFilter;
@@ -151,6 +156,38 @@ export default function Campaigns() {
     }
   };
 
+  const handleCreatorClick = async (playerId: string) => {
+    setLoadingLookup(true);
+    try {
+      const result = await api.creators.lookup({ userId: playerId });
+      setCreatorLookup(result);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingLookup(false);
+    }
+  };
+
+  const handleResubmit = async () => {
+    if (!resubmitTarget || !resubmitUrl.trim()) return;
+    try {
+      await api.campaigns.resubmitPost(resubmitTarget.campaignId, resubmitTarget.reservationId, resubmitUrl.trim());
+      alert(t('resubmitSuccess'));
+      setResubmitTarget(null);
+      setResubmitUrl('');
+      // Refresh reservations
+      const res = await api.campaigns.reservations(resubmitTarget.campaignId);
+      setReservations((prev) => ({ ...prev, [resubmitTarget.campaignId]: res }));
+    } catch (err: any) {
+      alert(err.message || 'Failed to resubmit');
+    }
+  };
+
+  const getDisplayStatus = (r: any) => {
+    if (r.redeemedTimestamp) return 'redeemed';
+    return r.status;
+  };
+
   const handleSearch = () => fetchCampaigns(1, search);
   const handleFilter = (f: string) => {
     setStatusFilter(f);
@@ -179,6 +216,7 @@ export default function Campaigns() {
       expired: t('reservationExpired'),
       canceled: t('reservationCanceled'),
       rejected: t('reservationRejected'),
+      redeemed: t('reservationRedeemed'),
     };
     return map[status] || status;
   };
@@ -616,6 +654,7 @@ export default function Campaigns() {
                                   <th className="text-left py-2 pr-4 font-medium">{t('contact')}</th>
                                   <th className="text-left py-2 pr-4 font-medium">{t('reservationStatus')}</th>
                                   <th className="text-left py-2 pr-4 font-medium">{t('approvedAt')}</th>
+                                  <th className="text-left py-2 pr-4 font-medium">{t('redeemedAt')}</th>
                                   <th className="text-left py-2 pr-4 font-medium">{t('reservationExpiry')}</th>
                                   <th className="text-left py-2 pr-4 font-medium">{t('postInfo')}</th>
                                   <th className="text-left py-2 pr-4 font-medium">{t('date')}</th>
@@ -625,22 +664,30 @@ export default function Campaigns() {
                               <tbody>
                                 {filtered.map((r: any) => (
                                   <tr key={r.id} className="border-t border-white/5">
-                                    <td className="py-2 pr-4 text-slate-300 whitespace-nowrap">{r.creatorName || '—'}</td>
+                                    <td className="py-2 pr-4 whitespace-nowrap">
+                                      <button onClick={(e) => { e.stopPropagation(); handleCreatorClick(r.playerId); }} className="text-slate-300 hover:text-blue-400 transition-colors cursor-pointer">{r.creatorName || '—'}</button>
+                                    </td>
                                     <td className="py-2 pr-4 text-slate-400 text-xs whitespace-nowrap">{r.igUsername ? <a href={`https://instagram.com/${r.igUsername}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="hover:text-blue-400 transition-colors">@{r.igUsername}</a> : '—'}</td>
                                     <td className="py-2 pr-4 text-slate-500 text-xs whitespace-nowrap">{r.creatorEmail || r.creatorPhone || '—'}</td>
                                     <td className="py-2 pr-4 whitespace-nowrap">
-                                      <select
-                                        value={r.status}
-                                        onChange={(e) => { e.stopPropagation(); handleUpdateStatus(c.id, r.id, e.target.value); }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className={`text-xs px-2 py-0.5 rounded-full border-0 cursor-pointer ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}
-                                      >
-                                        {['booked', 'pending', 'used', 'expired', 'canceled', 'rejected'].map((s) => (
-                                          <option key={s} value={s} className="bg-navy-900 text-slate-200">{reservationStatusLabel(s)}</option>
-                                        ))}
-                                      </select>
+                                      {(() => { const ds = getDisplayStatus(r); return (
+                                        <span className="inline-flex items-center gap-1">
+                                          <select
+                                            value={r.status}
+                                            onChange={(e) => { e.stopPropagation(); handleUpdateStatus(c.id, r.id, e.target.value); }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className={`text-xs px-2 py-0.5 rounded-full border-0 cursor-pointer ${RESERVATION_COLORS[ds] || 'bg-slate-500/15 text-slate-400'}`}
+                                          >
+                                            {['booked', 'pending', 'used', 'expired', 'canceled', 'rejected'].map((s) => (
+                                              <option key={s} value={s} className="bg-navy-900 text-slate-200">{reservationStatusLabel(s)}</option>
+                                            ))}
+                                          </select>
+                                          {ds === 'redeemed' && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400">{t('reservationRedeemed')}</span>}
+                                        </span>
+                                      );})()}
                                     </td>
                                     <td className="py-2 pr-4 text-xs text-slate-400 whitespace-nowrap">{r.approvedAt ? formatDateTime(r.approvedAt) : '—'}</td>
+                                    <td className="py-2 pr-4 text-xs text-slate-400 whitespace-nowrap">{r.redeemedTimestamp ? formatDateTime(r.redeemedTimestamp) : '—'}</td>
                                     <td className="py-2 pr-4 text-[13px] whitespace-nowrap">
                                       {editingExpiry === r.id ? (
                                         <input
@@ -685,16 +732,26 @@ export default function Campaigns() {
                                           </button>
                                         </div>
                                       ) : (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingExpiry(r.id);
-                                            setNewExpiry(r.expireTimestamp ? new Date(r.expireTimestamp).toISOString().slice(0, 16) : '');
-                                          }}
-                                          className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
-                                        >
-                                          {t('updateExpiry')}
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setEditingExpiry(r.id);
+                                              setNewExpiry(r.expireTimestamp ? new Date(r.expireTimestamp).toISOString().slice(0, 16) : '');
+                                            }}
+                                            className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
+                                          >
+                                            {t('updateExpiry')}
+                                          </button>
+                                          {r.submissionId && (
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); setResubmitTarget({ campaignId: c.id, reservationId: r.id, creatorName: r.creatorName || r.igUsername || '—' }); }}
+                                              className="px-2 py-1 text-xs bg-violet-500/20 text-violet-400 rounded hover:bg-violet-500/30 transition-colors"
+                                            >
+                                              {t('resubmit')}
+                                            </button>
+                                          )}
+                                        </div>
                                       )}
                                     </td>
                                   </tr>
@@ -776,6 +833,7 @@ export default function Campaigns() {
               <div>
                 <div className="text-xs text-slate-500 mb-1">{t('store')}</div>
                 <div className="text-slate-300 text-sm">{detailCampaign.storeName}</div>
+                {detailCampaign.redeemCode && <div className="text-xs text-slate-500 mt-0.5">{t('redeemCode')}: <span className="text-amber-400 font-mono">{detailCampaign.redeemCode}</span></div>}
               </div>
               <div>
                 <div className="text-xs text-slate-500 mb-1">{t('owner')}</div>
@@ -878,6 +936,133 @@ export default function Campaigns() {
               >
                 {t('close')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Creator Lookup Modal */}
+      {(creatorLookup || loadingLookup) && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => { setCreatorLookup(null); setLoadingLookup(false); }}>
+          <div className="bg-navy-900 border border-white/10 rounded-xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {loadingLookup ? (
+              <div className="text-center text-slate-400 py-8">Loading...</div>
+            ) : creatorLookup?.user ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">{creatorLookup.user.fullName || '—'}</h3>
+                    <div className="text-sm text-slate-400">
+                      {creatorLookup.user.igUsername && <a href={`https://instagram.com/${creatorLookup.user.igUsername}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">@{creatorLookup.user.igUsername}</a>}
+                      {creatorLookup.user.followers && <span className="text-slate-500 ml-2">{parseInt(creatorLookup.user.followers).toLocaleString()} followers</span>}
+                      <span className="text-slate-600 ml-2">{creatorLookup.user.email}</span>
+                      <span className="text-slate-600 ml-2">{creatorLookup.user.phoneNumber}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => setCreatorLookup(null)} className="text-slate-400 hover:text-slate-200 text-xl">✕</button>
+                </div>
+
+                {/* Reservations */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-slate-400 mb-2">{t('tab_reservations')} ({creatorLookup.reservations.length})</h4>
+                  {creatorLookup.reservations.length > 0 ? (
+                    <table className="w-full text-xs">
+                      <thead><tr className="text-slate-500 border-b border-white/5">
+                        <th className="text-left py-1.5 pr-3">{t('campaignTitle')}</th>
+                        <th className="text-left py-1.5 pr-3">{t('store')}</th>
+                        <th className="text-left py-1.5 pr-3">{t('status')}</th>
+                        <th className="text-left py-1.5 pr-3">{t('approvedAt')}</th>
+                        <th className="text-left py-1.5">{t('reservationExpiry')}</th>
+                      </tr></thead>
+                      <tbody>
+                        {creatorLookup.reservations.map((r: any) => (
+                          <tr key={r.id} className="border-t border-white/5">
+                            <td className="py-1.5 pr-3 text-slate-200">{r.campaignTitle}</td>
+                            <td className="py-1.5 pr-3 text-slate-400">{r.storeName}</td>
+                            <td className="py-1.5 pr-3"><span className={`px-2 py-0.5 rounded-full ${RESERVATION_COLORS[r.status] || 'bg-slate-500/15 text-slate-400'}`}>{r.status}</span></td>
+                            <td className="py-1.5 pr-3 text-slate-400">{r.approvedAt ? formatDateTime(r.approvedAt) : '—'}</td>
+                            <td className="py-1.5 text-slate-400">{r.expireTimestamp ? formatDateTime(r.expireTimestamp) : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : <div className="text-slate-500 text-xs">{t('noResults')}</div>}
+                </div>
+
+                {/* Submissions */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-slate-400 mb-2">{t('tab_submissions')} ({creatorLookup.submissions.length})</h4>
+                  {creatorLookup.submissions.length > 0 ? (
+                    <table className="w-full text-xs">
+                      <thead><tr className="text-slate-500 border-b border-white/5">
+                        <th className="text-left py-1.5 pr-3">{t('campaignTitle')}</th>
+                        <th className="text-left py-1.5 pr-3">{t('status')}</th>
+                        <th className="text-left py-1.5 pr-3">{t('postInfo')}</th>
+                        <th className="text-right py-1.5 pr-3">{t('totalViews')}</th>
+                        <th className="text-right py-1.5">{t('totalLikes')}</th>
+                      </tr></thead>
+                      <tbody>
+                        {creatorLookup.submissions.map((s: any) => (
+                          <tr key={s.id} className="border-t border-white/5">
+                            <td className="py-1.5 pr-3 text-slate-200">{s.campaignTitle}</td>
+                            <td className="py-1.5 pr-3"><span className={`px-2 py-0.5 rounded-full ${s.status === 'accepted' ? 'bg-emerald-500/15 text-emerald-400' : s.status === 'rejected' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400'}`}>{s.status}</span></td>
+                            <td className="py-1.5 pr-3">{s.postUrl ? <a href={s.postUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">{t('viewPost')}</a> : '—'}</td>
+                            <td className="py-1.5 pr-3 text-right text-violet-400 font-mono">{s.viewCount ? parseInt(s.viewCount).toLocaleString() : '—'}</td>
+                            <td className="py-1.5 text-right text-pink-400 font-mono">{s.likeCount ? parseInt(s.likeCount).toLocaleString() : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : <div className="text-slate-500 text-xs">{t('noResults')}</div>}
+                </div>
+
+                {/* Payouts */}
+                <div>
+                  <h4 className="text-sm font-medium text-slate-400 mb-2">{t('tab_payouts')} ({creatorLookup.payouts.length})</h4>
+                  {creatorLookup.payouts.length > 0 ? (
+                    <table className="w-full text-xs">
+                      <thead><tr className="text-slate-500 border-b border-white/5">
+                        <th className="text-left py-1.5 pr-3">{t('date')}</th>
+                        <th className="text-right py-1.5 pr-3">{t('amount')}</th>
+                        <th className="text-right py-1.5 pr-3">{t('net')}</th>
+                        <th className="text-left py-1.5">{t('status')}</th>
+                      </tr></thead>
+                      <tbody>
+                        {creatorLookup.payouts.map((p: any) => (
+                          <tr key={p.id} className="border-t border-white/5">
+                            <td className="py-1.5 pr-3 text-slate-400">{formatDate(p.createTimestamp)}</td>
+                            <td className="py-1.5 pr-3 text-right font-mono text-slate-300">{formatCurrency(parseFloat(p.amount))}</td>
+                            <td className="py-1.5 pr-3 text-right font-mono text-emerald-400">{p.net ? formatCurrency(parseFloat(p.net)) : '—'}</td>
+                            <td className="py-1.5"><span className={`px-2 py-0.5 rounded-full ${RESERVATION_COLORS[p.status] || 'bg-slate-500/15 text-slate-400'}`}>{p.status}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : <div className="text-slate-500 text-xs">{t('noResults')}</div>}
+                </div>
+              </>
+            ) : <div className="text-center text-slate-500 py-8">{t('noUserFound')}</div>}
+          </div>
+        </div>
+      )}
+
+      {/* Resubmit Modal */}
+      {resubmitTarget && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setResubmitTarget(null)}>
+          <div className="bg-navy-900 border border-white/10 rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-2">{t('resubmitPost')}</h3>
+            <p className="text-sm text-slate-400 mb-4">{t('resubmitDesc', { creator: resubmitTarget.creatorName })}</p>
+            <input
+              type="text"
+              value={resubmitUrl}
+              onChange={(e) => setResubmitUrl(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleResubmit()}
+              placeholder="https://www.instagram.com/p/... or /reel/..."
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-200 mb-4 focus:outline-none focus:border-blue-500"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setResubmitTarget(null)} className="px-4 py-2 text-sm bg-white/5 text-slate-400 rounded-lg hover:bg-white/10">{t('close')}</button>
+              <button onClick={handleResubmit} disabled={!resubmitUrl.trim()} className="px-4 py-2 text-sm bg-violet-500 text-white rounded-lg hover:bg-violet-600 disabled:opacity-40">{t('resubmit')}</button>
             </div>
           </div>
         </div>

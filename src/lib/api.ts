@@ -84,6 +84,8 @@ export const api = {
       patchJSON<any>(`/campaigns/${campaignId}`, data),
     updateReservation: (campaignId: string, reservationId: string, data: { expireTimestamp?: string; status?: string }) =>
       patchJSON<any>(`/campaigns/${campaignId}/reservations/${reservationId}`, data),
+    resubmitPost: (campaignId: string, reservationId: string, instagramUrl: string) =>
+      postJSON<any>(`/campaigns/${campaignId}/reservations/${reservationId}/resubmit`, { instagramUrl }),
   },
   vip: {
     scoring: () => fetchJSON<any>('/vip/scoring'),

@@ -37,6 +37,7 @@ campaignsRoutes.get('/all', async (_req, res) => {
           ac."isFreeProductIncluded",
           ac."freeProductValue",
           s.name as "storeName",
+          s."redeemCode",
           b.name as "brandName",
           u."fullName" as "ownerName",
           u.email as "ownerEmail",
@@ -74,6 +75,7 @@ campaignsRoutes.get('/all', async (_req, res) => {
           ac."isFreeProductIncluded",
           ac."freeProductValue",
           s.name as "storeName",
+          s."redeemCode",
           b.name as "brandName",
           u."fullName" as "ownerName",
           u.email as "ownerEmail",
@@ -157,6 +159,7 @@ campaignsRoutes.get('/', async (req, res) => {
           ac."isFreeProductIncluded",
           ac."freeProductValue",
           s.name as "storeName",
+          s."redeemCode",
           b.name as "brandName",
           u."fullName" as "ownerName",
           u.email as "ownerEmail",
@@ -230,10 +233,12 @@ campaignsRoutes.get('/:id/reservations', async (req: Request, res: Response) => 
         u.email as "creatorEmail",
         u."phoneNumber" as "creatorPhone",
         (SELECT sa.profile->>'username' FROM "social-accounts" sa WHERE sa."userId"::text = r."playerId"::text AND sa.platform = 'Instagram' LIMIT 1) as "igUsername",
+        ps.id as "submissionId",
         ps.status as "submissionStatus",
         ps."postSnapshot"->>'like_count' as "postLikes",
         ps."postSnapshot"->>'view_count' as "postViews",
-        p."contentObj"->>'url' as "postUrl"
+        p."contentObj"->>'url' as "postUrl",
+        p.id as "postId"
       FROM "cc-slot-reservations" r
       JOIN users u ON u.id::text = r."playerId"::text
       LEFT JOIN "post-submissions" ps ON ps."callCardId" = r."callCardId" AND ps."playerId"::text = r."playerId"::text AND ps.status = 'accepted'
@@ -371,5 +376,79 @@ campaignsRoutes.patch('/:campaignId/reservations/:reservationId', async (req: Re
   } catch (err) {
     console.error('Update reservation error:', err);
     res.status(500).json({ error: 'Failed to update reservation' });
+  }
+});
+
+// Resubmit post for a submission: find post by IG URL, update submission to point to new post
+campaignsRoutes.post('/:campaignId/reservations/:reservationId/resubmit', async (req: Request, res: Response) => {
+  try {
+    const { instagramUrl } = req.body;
+    if (!instagramUrl) return res.status(400).json({ error: 'instagramUrl is required' });
+
+    const campaignId = req.params.campaignId;
+    const reservationId = req.params.reservationId;
+
+    // Get the reservation to find playerId
+    const reservation = await query(
+      `SELECT "playerId" FROM "cc-slot-reservations" WHERE id = $1 AND "callCardId" = $2`,
+      [reservationId, campaignId],
+    );
+    if (reservation.rows.length === 0) return res.status(404).json({ error: 'Reservation not found' });
+    const playerId = reservation.rows[0].playerId;
+
+    // Find existing submission for this player + campaign
+    const existingSub = await query(
+      `SELECT id, "socialAccountId" FROM "post-submissions" WHERE "playerId"::text = $1 AND "callCardId" = $2 ORDER BY "createTimestamp" DESC LIMIT 1`,
+      [playerId, campaignId],
+    );
+    if (existingSub.rows.length === 0) return res.status(404).json({ error: 'No existing submission found for this creator on this campaign' });
+    const submissionId = existingSub.rows[0].id;
+    const socialAccountId = existingSub.rows[0].socialAccountId;
+
+    // Find the post by Instagram URL — match by contentObj->>'url'
+    // Instagram URLs can be like https://www.instagram.com/p/CODE or https://www.instagram.com/reel/CODE
+    const post = await query(
+      `SELECT id, "contentObj" FROM posts
+       WHERE "userId"::text = $1
+         AND "contentObj"->>'url' ILIKE $2
+       ORDER BY "createTimestamp" DESC LIMIT 1`,
+      [playerId, `%${instagramUrl.replace(/\/$/, '').split('/').pop()}%`],
+    );
+
+    if (post.rows.length === 0) {
+      return res.status(404).json({ error: 'Post not found. Make sure to refresh Phyllo first so the post is synced.' });
+    }
+
+    const newPostId = post.rows[0].id;
+    const contentObj = post.rows[0].contentObj;
+
+    // Build postSnapshot from contentObj
+    const postSnapshot = {
+      title: contentObj.title || '',
+      like_count: contentObj.like_count || 0,
+      view_count: contentObj.view_count || 0,
+      share_count: contentObj.share_count || 0,
+      comment_count: contentObj.comment_count || 0,
+    };
+
+    // Update the submission: new postId, reset status, update snapshot, increment submitTimes
+    const result = await query(`
+      UPDATE "post-submissions"
+      SET "postId" = $1,
+          "postSnapshot" = $2,
+          status = 'pending_approval',
+          "submitTimes" = "submitTimes" + 1,
+          "updateTimestamp" = NOW(),
+          "acceptedAt" = NULL,
+          "rejectReason" = NULL,
+          "rejectReasonDetail" = NULL
+      WHERE id = $3
+      RETURNING id, status, "postId"
+    `, [newPostId, JSON.stringify(postSnapshot), submissionId]);
+
+    res.json({ success: true, submission: result.rows[0], postUrl: contentObj.url });
+  } catch (err) {
+    console.error('Resubmit post error:', err);
+    res.status(500).json({ error: 'Failed to resubmit post' });
   }
 });
