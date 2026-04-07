@@ -186,7 +186,7 @@ brandsRoutes.get('/', async (req, res) => {
 
     if (search) {
       params.push(`%${search}%`);
-      whereClause += ` AND (b.name ILIKE $${paramIndex} OR u."fullName" ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex} OR u."phoneNumber" ILIKE $${paramIndex})`;
+      whereClause += ` AND (COALESCE(b.name, '') ILIKE $${paramIndex} OR u."fullName" ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex} OR u."phoneNumber" ILIKE $${paramIndex})`;
       paramIndex++;
     }
 
@@ -196,7 +196,7 @@ brandsRoutes.get('/', async (req, res) => {
       whereClause += ` AND (u."subscriptionLevel" IS NULL OR u."subscriptionLevel" IN ('free', 'monthly_plan_unlimited'))`;
     }
 
-    if (hasStore) {
+    if (hasStore && !search) {
       whereClause += ` AND EXISTS (SELECT 1 FROM stores s WHERE s."brandId"::text = b.id::text AND s."deleteTimestamp" IS NULL)`;
     }
 
@@ -204,7 +204,8 @@ brandsRoutes.get('/', async (req, res) => {
       query(`
         SELECT
           b.id as "brandId",
-          CASE WHEN LOWER(b.name) = 'my default brand'
+          CASE WHEN b.name IS NULL THEN NULL
+            WHEN LOWER(b.name) = 'my default brand'
             THEN COALESCE((SELECT s.name FROM stores s WHERE s."brandId"::text = b.id::text AND s."deleteTimestamp" IS NULL LIMIT 1), b.name)
             ELSE b.name
           END as "brandName",
@@ -226,9 +227,9 @@ brandsRoutes.get('/', async (req, res) => {
           bb."totalincome" as "totalDeposited",
           bb.balance,
           (SELECT COUNT(*) FROM user_brands ub2 WHERE ub2."userId"::text = u.id::text AND ub2.role = 'owner') as "brandCount"
-        FROM brands b
-        JOIN user_brands ub ON ub."brandId" = b.id AND ub.role = 'owner'
-        JOIN users u ON ub."userId"::text = u.id::text
+        FROM users u
+        LEFT JOIN user_brands ub ON ub."userId"::text = u.id::text AND ub.role = 'owner'
+        LEFT JOIN brands b ON b.id = ub."brandId"
         LEFT JOIN "custom-plans" cp ON cp."userId"::text = u.id::text
         LEFT JOIN LATERAL (
           SELECT amount, "createTimestamp", "includedSubscriptionLevel", "unsubscribedAt"
@@ -239,7 +240,7 @@ brandsRoutes.get('/', async (req, res) => {
         ) latest_deposit ON true
         LEFT JOIN "brand-balance" bb ON bb."userid"::text = u.id::text AND LOWER(bb.currency) = 'twd'
         ${whereClause}
-        ORDER BY b."createTimestamp" DESC
+        ORDER BY u."createTimestamp" DESC
         LIMIT $1 OFFSET $2
       `, params),
       (() => {
@@ -248,7 +249,7 @@ brandsRoutes.get('/', async (req, res) => {
         let ci = 1;
         if (search) {
           countParams.push(`%${search}%`);
-          countWhere += ` AND (b.name ILIKE $${ci} OR u."fullName" ILIKE $${ci} OR u.email ILIKE $${ci} OR u."phoneNumber" ILIKE $${ci})`;
+          countWhere += ` AND (COALESCE(b.name, '') ILIKE $${ci} OR u."fullName" ILIKE $${ci} OR u.email ILIKE $${ci} OR u."phoneNumber" ILIKE $${ci})`;
           ci++;
         }
         if (subscription === 'subscribed') {
@@ -256,14 +257,14 @@ brandsRoutes.get('/', async (req, res) => {
         } else if (subscription === 'free') {
           countWhere += ` AND (u."subscriptionLevel" IS NULL OR u."subscriptionLevel" IN ('free', 'monthly_plan_unlimited'))`;
         }
-        if (hasStore) {
+        if (hasStore && !search) {
           countWhere += ` AND EXISTS (SELECT 1 FROM stores s WHERE s."brandId"::text = b.id::text AND s."deleteTimestamp" IS NULL)`;
         }
         return query(`
-          SELECT COUNT(DISTINCT b.id) as count
-          FROM brands b
-          JOIN user_brands ub ON ub."brandId" = b.id AND ub.role = 'owner'
-          JOIN users u ON ub."userId"::text = u.id::text
+          SELECT COUNT(DISTINCT u.id) as count
+          FROM users u
+          LEFT JOIN user_brands ub ON ub."userId"::text = u.id::text AND ub.role = 'owner'
+          LEFT JOIN brands b ON b.id = ub."brandId"
           ${countWhere}
         `, countParams);
       })(),

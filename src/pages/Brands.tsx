@@ -258,7 +258,7 @@ export default function Brands() {
                   return (
                     <tr key={`${b.userId}-${i}`} className="border-b border-white/5 hover:bg-white/[0.02]">
                       <td className="py-2.5 px-4">
-                        <div className="text-slate-200 font-medium">{b.brandName}</div>
+                        <div className="text-slate-200 font-medium">{b.brandName || <span className="text-slate-500 italic">No brand</span>}</div>
                         <div className="text-xs text-slate-500">{b.fullName || b.email || b.phoneNumber || '—'}</div>
                       </td>
                       <td className="py-2.5 px-4">
