@@ -411,18 +411,28 @@ campaignsRoutes.post('/:campaignId/reservations/:reservationId/resubmit', async 
     const submissionId = existingSub.rows[0].id;
     const socialAccountId = existingSub.rows[0].socialAccountId;
 
-    // Find the post by Instagram URL — match by contentObj->>'url'
-    // Instagram URLs can be like https://www.instagram.com/p/CODE or https://www.instagram.com/reel/CODE
+    // Step 1: Refresh Phyllo for this social account to sync latest posts
+    const backendUrl = process.env.BACKEND_API_URL || 'http://localhost:3000';
+    try {
+      await fetch(`${backendUrl}/api/v1/phyllo/accounts/${socialAccountId}/refresh`, { method: 'GET' });
+      // Wait a moment for Phyllo to sync
+      await new Promise((r) => setTimeout(r, 3000));
+    } catch (err) {
+      console.warn('Phyllo refresh failed, continuing to search for post anyway:', err);
+    }
+
+    // Step 2: Find the post by Instagram URL — match by contentObj->>'url'
+    const urlCode = instagramUrl.replace(/\/$/, '').split('/').pop();
     const post = await query(
       `SELECT id, "contentObj" FROM posts
        WHERE "userId"::text = $1
          AND "contentObj"->>'url' ILIKE $2
        ORDER BY "createTimestamp" DESC LIMIT 1`,
-      [playerId, `%${instagramUrl.replace(/\/$/, '').split('/').pop()}%`],
+      [playerId, `%${urlCode}%`],
     );
 
     if (post.rows.length === 0) {
-      return res.status(404).json({ error: 'Post not found. Make sure to refresh Phyllo first so the post is synced.' });
+      return res.status(404).json({ error: 'Post not found after Phyllo refresh. The post may not be synced yet — try again in a few seconds.' });
     }
 
     const newPostId = post.rows[0].id;

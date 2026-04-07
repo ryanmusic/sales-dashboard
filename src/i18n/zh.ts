@@ -195,7 +195,7 @@ const zh: Translations = {
   redeemCode: '兌換碼',
   resubmit: '重新提交',
   resubmitPost: '重新提交貼文',
-  resubmitDesc: '請貼上 {creator} 的新 Instagram 貼文網址。請確認已先刷新 Phyllo。',
+  resubmitDesc: '請貼上 {creator} 的新 Instagram 貼文網址。系統會自動刷新 Phyllo。',
   resubmitSuccess: '貼文已重新提交！',
   confirmChange: '確定要套用此變更嗎？',
   confirmStatusChange: '確定要將狀態改為「{status}」嗎？',

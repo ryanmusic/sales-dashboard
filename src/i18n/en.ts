@@ -218,7 +218,7 @@ const en = {
   redeemCode: 'Redeem Code',
   resubmit: 'Resubmit',
   resubmitPost: 'Resubmit Post',
-  resubmitDesc: 'Paste the new Instagram post URL for {creator}. Make sure Phyllo is refreshed first.',
+  resubmitDesc: 'Paste the new Instagram post URL for {creator}. Phyllo will be refreshed automatically.',
   resubmitSuccess: 'Post resubmitted successfully!',
   confirmChange: 'Are you sure you want to apply this change?',
   confirmStatusChange: 'Change status to "{status}"?',
