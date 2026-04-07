@@ -56,6 +56,8 @@ export default function CreatorPayments() {
   };
 
   const handlePayoutAction = async (payoutId: string, newStatus: string) => {
+    const msgs: Record<string, string> = { approved: t('confirmApprove'), rejected: t('confirmReject'), wired_successful: t('confirmWired') };
+    if (!confirm(msgs[newStatus] || t('confirmChange'))) return;
     try {
       await api.creators.updatePayout(payoutId, newStatus);
       // Refresh data

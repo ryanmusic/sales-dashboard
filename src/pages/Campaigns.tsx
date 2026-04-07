@@ -94,6 +94,7 @@ export default function Campaigns() {
 
   const handleUpdateExpiry = async (campaignId: string, reservationId: string) => {
     if (!newExpiry) return;
+    if (!confirm(t('confirmChange'))) return;
     try {
       await api.campaigns.updateReservation(campaignId, reservationId, { expireTimestamp: new Date(newExpiry).toISOString() });
       const res = await api.campaigns.reservations(campaignId);
@@ -106,6 +107,7 @@ export default function Campaigns() {
   };
 
   const handleUpdateStatus = async (campaignId: string, reservationId: string, newStatus: string) => {
+    if (!confirm(t('confirmStatusChange', { status: reservationStatusLabel(newStatus) }))) return;
     try {
       await api.campaigns.updateReservation(campaignId, reservationId, { status: newStatus });
       const res = await api.campaigns.reservations(campaignId);
@@ -120,6 +122,7 @@ export default function Campaigns() {
   };
 
   const handleUpdateCampaignStatus = async (campaignId: string, newStatus: string) => {
+    if (!confirm(t('confirmStatusChange', { status: campaignStatusLabel(newStatus) }))) return;
     try {
       await api.campaigns.updateCampaign(campaignId, { status: newStatus });
       setData((prev: any) => ({
@@ -138,6 +141,7 @@ export default function Campaigns() {
 
   const handleUpdateCampaignEnd = async (campaignId: string) => {
     if (!newCampaignEnd) return;
+    if (!confirm(t('confirmChange'))) return;
     try {
       await api.campaigns.updateCampaign(campaignId, { endTimestamp: new Date(newCampaignEnd).toISOString() });
       setData((prev: any) => ({
@@ -170,6 +174,7 @@ export default function Campaigns() {
 
   const handleResubmit = async () => {
     if (!resubmitTarget || !resubmitUrl.trim()) return;
+    if (!confirm(t('confirmChange'))) return;
     try {
       await api.campaigns.resubmitPost(resubmitTarget.campaignId, resubmitTarget.reservationId, resubmitUrl.trim());
       alert(t('resubmitSuccess'));
