@@ -104,30 +104,20 @@ export default function Bonus() {
       <h2 className="text-2xl font-bold mb-6">{t('bonusTitle')}</h2>
 
       {/* Campaign Selector */}
-      <div className="bg-navy-900 border border-white/5 rounded-xl p-6 mb-6">
-        <h3 className="text-lg font-semibold mb-3">{t('bonusSelectCampaign')}</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+      <div className="flex items-center gap-3 mb-6">
+        <label className="text-sm text-slate-400">{t('bonusSelectCampaign')}</label>
+        <select
+          value={selectedCampaign || ''}
+          onChange={(e) => e.target.value && loadReservations(e.target.value)}
+          className="flex-1 max-w-xl bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+        >
+          <option value="" className="bg-navy-900">{t('bonusSelectCampaign')}...</option>
           {campaigns.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => loadReservations(c.id)}
-              className={`text-left p-3 rounded-lg border transition-colors ${
-                selectedCampaign === c.id
-                  ? 'bg-blue-500/15 border-blue-500/40 text-blue-300'
-                  : 'bg-white/[0.02] border-white/5 text-slate-300 hover:bg-white/[0.04]'
-              }`}
-            >
-              <div className="text-sm font-medium truncate" title={c.title}>{c.title}</div>
-              <div className="text-xs text-slate-500 mt-0.5">
-                {c.storeName} · {c.status} · {c.slots} slots
-                {c.endTimestamp && ` · ${formatDate(c.endTimestamp)}`}
-              </div>
-            </button>
+            <option key={c.id} value={c.id} className="bg-navy-900">
+              {c.title} — {c.storeName} · {c.status} · {c.slots} slots{c.endTimestamp ? ` · ${formatDate(c.endTimestamp)}` : ''}
+            </option>
           ))}
-          {campaigns.length === 0 && (
-            <div className="text-slate-500 text-sm col-span-3">{t('noCampaignsFound')}</div>
-          )}
-        </div>
+        </select>
       </div>
 
       {/* Reservation Table */}
