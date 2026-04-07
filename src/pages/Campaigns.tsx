@@ -1008,7 +1008,7 @@ export default function Campaigns() {
                             <td className="py-1.5">
                               {matchingRes && (
                                 <button
-                                  onClick={() => { setResubmitTarget({ campaignId: s.callCardId, reservationId: matchingRes.id, creatorName: creatorLookup.user.fullName || creatorLookup.user.igUsername || '—' }); setCreatorLookup(null); }}
+                                  onClick={() => { setResubmitTarget({ campaignId: s.callCardId, reservationId: matchingRes.id, creatorName: creatorLookup.user.fullName || creatorLookup.user.igUsername || '—' }); }}
                                   className="px-1.5 py-0.5 text-xs bg-violet-500/20 text-violet-400 rounded hover:bg-violet-500/30 transition-colors"
                                 >
                                   {t('resubmit')}
@@ -1055,7 +1055,7 @@ export default function Campaigns() {
 
       {/* Resubmit Modal */}
       {resubmitTarget && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setResubmitTarget(null)}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4" onClick={() => setResubmitTarget(null)}>
           <div className="bg-navy-900 border border-white/10 rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-2">{t('resubmitPost')}</h3>
             <p className="text-sm text-slate-400 mb-4">{t('resubmitDesc', { creator: resubmitTarget.creatorName })}</p>
