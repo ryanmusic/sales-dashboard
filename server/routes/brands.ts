@@ -186,7 +186,7 @@ brandsRoutes.get('/', async (req, res) => {
 
     if (search) {
       params.push(`%${search}%`);
-      whereClause += ` AND (b.name ILIKE $${paramIndex} OR u."fullName" ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex})`;
+      whereClause += ` AND (b.name ILIKE $${paramIndex} OR u."fullName" ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex} OR u."phoneNumber" ILIKE $${paramIndex})`;
       paramIndex++;
     }
 
@@ -248,7 +248,7 @@ brandsRoutes.get('/', async (req, res) => {
         let ci = 1;
         if (search) {
           countParams.push(`%${search}%`);
-          countWhere += ` AND (b.name ILIKE $${ci} OR u."fullName" ILIKE $${ci} OR u.email ILIKE $${ci})`;
+          countWhere += ` AND (b.name ILIKE $${ci} OR u."fullName" ILIKE $${ci} OR u.email ILIKE $${ci} OR u."phoneNumber" ILIKE $${ci})`;
           ci++;
         }
         if (subscription === 'subscribed') {
