@@ -55,14 +55,14 @@ export default function Brands() {
   const fetchBrands = async (p: number, s: string, sub?: string) => {
     const filter = sub !== undefined ? sub : subFilter;
     const result = await api.brands.list(p, 50, s, filter);
-    setBrands(result);
+    setBrands((prev: any) => ({ ...result, initialTotal: prev.initialTotal || result.total }));
     setPage(p);
   };
 
   useEffect(() => {
     api.brands.all()
       .then((data) => {
-        setBrands({ brands: data.brands, total: data.total, page: data.page, limit: data.limit });
+        setBrands({ brands: data.brands, total: data.total, page: data.page, limit: data.limit, initialTotal: data.total });
         setSubStats(
           data.subStats.map((r: any) => ({
             name: subscriptionLabel(r.subscriptionLevel, t),
@@ -91,7 +91,7 @@ export default function Brands() {
       <h2 className="text-2xl font-bold mb-6">{t('brands')}</h2>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard title={t('totalBrands')} value={String(brands.total)} color="blue" />
+        <StatCard title={t('totalBrands')} value={String(brands.initialTotal || brands.total)} color="blue" />
         <StatCard
           title={t('payingBrands')}
           value={String(subStats.filter((s) => s.name !== t('subFree')).reduce((sum, s) => sum + s.value, 0))}
