@@ -246,8 +246,11 @@ export default function Bonus() {
                     <span className="text-sm text-slate-400">{t('bonusSelected')}: <span className="text-blue-400 font-medium">{selected.size}</span></span>
                     <input
                       type="number"
+                      min="0"
+                      step="1"
                       value={bonusAmount}
-                      onChange={(e) => setBonusAmount(e.target.value)}
+                      onChange={(e) => setBonusAmount(e.target.value.replace(/[^0-9]/g, ''))}
+                      onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
                       placeholder={t('bonusAmountPlaceholder')}
                       className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 w-36 focus:outline-none focus:border-blue-500"
                     />
