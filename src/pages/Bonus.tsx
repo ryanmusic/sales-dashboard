@@ -91,6 +91,15 @@ export default function Bonus() {
     }
   };
 
+  const resLabel = (s: string) => {
+    const map: Record<string, string> = { booked: t('reservationBooked'), boooked: t('reservationBooked'), pending: t('reservationPending'), used: t('reservationUsed'), expired: t('reservationExpired'), canceled: t('reservationCanceled'), rejected: t('reservationRejected') };
+    return map[s] || s;
+  };
+  const subLabel = (s: string) => {
+    const map: Record<string, string> = { accepted: t('submissionAccepted'), pending_approval: t('reservationPending'), rejected: t('reservationRejected') };
+    return map[s] || s;
+  };
+
   const sorted = [...reservations].sort((a, b) => {
     const av = parseInt(a[sortBy]) || 0;
     const bv = parseInt(b[sortBy]) || 0;
@@ -202,7 +211,7 @@ export default function Bonus() {
                             r.status === 'used' ? 'bg-blue-500/15 text-blue-400'
                             : r.status === 'booked' || r.status === 'boooked' ? 'bg-emerald-500/15 text-emerald-400'
                             : 'bg-amber-500/15 text-amber-400'
-                          }`}>{r.status}</span>
+                          }`}>{resLabel(r.status)}</span>
                         </td>
                         <td className="py-1.5 pr-2 whitespace-nowrap">
                           {r.submissionStatus ? (
@@ -210,7 +219,7 @@ export default function Bonus() {
                               r.submissionStatus === 'accepted' ? 'bg-emerald-500/15 text-emerald-400'
                               : r.submissionStatus === 'rejected' ? 'bg-red-500/15 text-red-400'
                               : 'bg-amber-500/15 text-amber-400'
-                            }`}>{r.submissionStatus}</span>
+                            }`}>{subLabel(r.submissionStatus)}</span>
                           ) : <span className="text-slate-600 text-xs">—</span>}
                         </td>
                         <td className="py-1.5 pr-2 text-right font-mono text-violet-400 text-xs">
