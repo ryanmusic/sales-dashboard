@@ -690,18 +690,26 @@ export default function Campaigns() {
                                     <td className="py-1 pr-2 text-xs text-slate-400 whitespace-nowrap">{r.redeemedTimestamp ? formatDateTime(r.redeemedTimestamp) : '—'}</td>
                                     <td className="py-1 pr-2 text-xs whitespace-nowrap">
                                       {editingExpiry === r.id ? (
-                                        <input
-                                          type="datetime-local"
-                                          step="900"
-                                          value={newExpiry}
-                                          onChange={(e) => setNewExpiry(e.target.value)}
-                                          onClick={(e) => e.stopPropagation()}
-                                          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); handleUpdateExpiry(c.id, r.id); } if (e.key === 'Escape') { e.stopPropagation(); setEditingExpiry(null); } }}
-                                          autoFocus
-                                          className="px-1.5 py-0.5 text-xs bg-white/5 border border-blue-500/50 rounded text-slate-200 w-[170px]"
-                                        />
+                                        <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                          <input
+                                            type="datetime-local"
+                                            step="900"
+                                            value={newExpiry}
+                                            onChange={(e) => setNewExpiry(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); handleUpdateExpiry(c.id, r.id); } if (e.key === 'Escape') { e.stopPropagation(); setEditingExpiry(null); } }}
+                                            autoFocus
+                                            className="px-1.5 py-0.5 text-xs bg-white/5 border border-blue-500/50 rounded text-slate-200 w-[170px]"
+                                          />
+                                          <button onClick={() => handleUpdateExpiry(c.id, r.id)} className="px-1.5 py-0.5 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30">OK</button>
+                                          <button onClick={() => setEditingExpiry(null)} className="px-1 py-0.5 text-xs text-slate-400 hover:text-slate-200">✕</button>
+                                        </span>
                                       ) : (
-                                        <span className="text-slate-400">{r.expireTimestamp ? formatDateTime(r.expireTimestamp) : '—'}</span>
+                                        <span
+                                          className="text-slate-400 cursor-pointer hover:text-blue-400 transition-colors"
+                                          onClick={(e) => { e.stopPropagation(); setEditingExpiry(r.id); setNewExpiry(r.expireTimestamp ? new Date(r.expireTimestamp).toISOString().slice(0, 16) : ''); }}
+                                        >
+                                          {r.expireTimestamp ? formatDateTime(r.expireTimestamp) : '—'}
+                                        </span>
                                       )}
                                     </td>
                                     <td className="py-1 pr-2 text-xs whitespace-nowrap">
@@ -716,42 +724,13 @@ export default function Campaigns() {
                                       {r.createTimestamp ? formatDate(r.createTimestamp) : '—'}
                                     </td>
                                     <td className="py-1">
-                                      {editingExpiry === r.id ? (
-                                        <div className="flex items-center gap-1">
-                                          <button
-                                            onClick={(e) => { e.stopPropagation(); handleUpdateExpiry(c.id, r.id); }}
-                                            className="px-1.5 py-0.5 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30"
-                                          >
-                                            OK
-                                          </button>
-                                          <button
-                                            onClick={(e) => { e.stopPropagation(); setEditingExpiry(null); }}
-                                            className="px-1.5 py-0.5 text-xs bg-white/5 text-slate-400 rounded hover:bg-white/10"
-                                          >
-                                            ✕
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <div className="flex items-center gap-1">
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setEditingExpiry(r.id);
-                                              setNewExpiry(r.expireTimestamp ? new Date(r.expireTimestamp).toISOString().slice(0, 16) : '');
-                                            }}
-                                            className="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
-                                          >
-                                            {t('updateExpiry')}
-                                          </button>
-                                          {r.submissionId && (
-                                            <button
-                                              onClick={(e) => { e.stopPropagation(); setResubmitTarget({ campaignId: c.id, reservationId: r.id, creatorName: r.creatorName || r.igUsername || '—' }); }}
-                                              className="px-1.5 py-0.5 text-xs bg-violet-500/20 text-violet-400 rounded hover:bg-violet-500/30 transition-colors"
-                                            >
-                                              {t('resubmit')}
-                                            </button>
-                                          )}
-                                        </div>
+                                      {r.submissionId && (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); setResubmitTarget({ campaignId: c.id, reservationId: r.id, creatorName: r.creatorName || r.igUsername || '—' }); }}
+                                          className="px-1.5 py-0.5 text-xs bg-violet-500/20 text-violet-400 rounded hover:bg-violet-500/30 transition-colors"
+                                        >
+                                          {t('resubmit')}
+                                        </button>
                                       )}
                                     </td>
                                   </tr>
