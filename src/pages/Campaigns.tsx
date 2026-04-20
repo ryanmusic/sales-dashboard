@@ -291,7 +291,8 @@ export default function Campaigns() {
                   const days = Math.ceil(diffMs / 86400000);
                   const overdue = days < 0;
                   const absDays = Math.abs(days);
-                  const remaining = (c.slots || 0) - (c.slots - (c.currentSlots || 0));
+                  const occupied = parseInt(c.occupiedSlots || c.currentSlots || 0);
+                  const remaining = (c.slots || 0) - occupied;
                   const full = remaining <= 0;
                   const urgent = !full && (overdue || days <= 3);
                   const isExpanded = expandedExpiring === c.id;
@@ -308,7 +309,7 @@ export default function Campaigns() {
                         <td className="py-1.5 pr-2 max-w-[160px]">
                           <span className="text-slate-200 truncate block max-w-[160px]" title={c.title}>{c.title}</span>
                         </td>
-                        <td className={`py-1.5 pr-2 text-center font-medium ${full ? 'text-emerald-400' : remaining <= 2 ? 'text-red-400' : 'text-slate-300'}`}>{c.currentSlots || 0}/{c.slots}</td>
+                        <td className={`py-1.5 pr-2 text-center font-medium ${full ? 'text-emerald-400' : remaining <= 2 ? 'text-red-400' : 'text-slate-300'}`}>{remaining}/{c.slots}</td>
                         <td className={`py-1.5 pr-2 text-center ${parseInt(c.pendingCount) > 0 ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-slate-500'}`}>{c.pendingCount || 0}</td>
                         <td className="py-1.5 pr-2 text-center text-slate-300">{c.bookedCount || 0}</td>
                         <td className="py-1.5 pr-2 text-center text-blue-400">{c.usedCount || 0}</td>
@@ -577,7 +578,7 @@ export default function Campaigns() {
                         </select>
                       </td>
                       <td className="py-3 px-4 text-center text-slate-300">
-                        {t('slotsUsed', { used: c.currentSlots || 0, total: c.slots })}
+                        {t('slotsUsed', { used: (c.slots || 0) - parseInt(c.occupiedSlots || 0), total: c.slots })}
                       </td>
                       <td className="py-3 px-4 text-[13px] whitespace-nowrap">
                         <span className="text-slate-400">{c.startTimestamp ? formatDate(c.startTimestamp) : '—'}</span>
@@ -843,7 +844,7 @@ export default function Campaigns() {
               </div>
               <div>
                 <div className="text-xs text-slate-500 mb-1">{t('slots')}</div>
-                <div className="text-slate-300 text-sm">{t('slotsUsed', { used: detailCampaign.currentSlots || 0, total: detailCampaign.slots })}</div>
+                <div className="text-slate-300 text-sm">{t('slotsUsed', { used: (detailCampaign.slots || 0) - parseInt(detailCampaign.occupiedSlots || 0), total: detailCampaign.slots })}</div>
               </div>
               <div>
                 <div className="text-xs text-slate-500 mb-1">{t('budgetPerPost')}</div>
