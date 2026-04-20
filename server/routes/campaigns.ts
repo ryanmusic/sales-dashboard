@@ -43,7 +43,7 @@ campaignsRoutes.get('/all', async (_req, res) => {
           u.email as "ownerEmail",
           u."phoneNumber" as "ownerPhone",
           (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id) as "reservationCount",
-          (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id AND r.status IN ('booked', 'boooked', 'pending', 'used')) as "occupiedSlots"
+          (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id AND r.status IN ('booked', 'boooked', 'used')) as "occupiedSlots"
         FROM "attention-cards" ac
         JOIN stores s ON s.id = ac."storeId"
         LEFT JOIN brands b ON b.id::text = s."brandId"::text
@@ -88,7 +88,7 @@ campaignsRoutes.get('/all', async (_req, res) => {
           (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id AND r.status = 'pending') as "pendingCount",
           (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id AND r.status = 'used') as "usedCount",
           (SELECT COUNT(*) FROM "post-submissions" ps WHERE ps."callCardId" = ac.id AND ps.status = 'accepted') as "acceptedSubmissions",
-          (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id AND r.status IN ('booked', 'boooked', 'pending', 'used')) as "occupiedSlots"
+          (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id AND r.status IN ('booked', 'boooked', 'used')) as "occupiedSlots"
         FROM "attention-cards" ac
         JOIN stores s ON s.id = ac."storeId"
         LEFT JOIN brands b ON b.id::text = s."brandId"::text
@@ -173,7 +173,7 @@ campaignsRoutes.get('/', async (req, res) => {
           u.email as "ownerEmail",
           u."phoneNumber" as "ownerPhone",
           (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id) as "reservationCount",
-          (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id AND r.status IN ('booked', 'boooked', 'pending', 'used')) as "occupiedSlots"
+          (SELECT COUNT(*) FROM "cc-slot-reservations" r WHERE r."callCardId" = ac.id AND r.status IN ('booked', 'boooked', 'used')) as "occupiedSlots"
         FROM "attention-cards" ac
         JOIN stores s ON s.id = ac."storeId"
         LEFT JOIN brands b ON b.id::text = s."brandId"::text
