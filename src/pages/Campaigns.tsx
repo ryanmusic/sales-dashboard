@@ -825,6 +825,7 @@ export default function Campaigns() {
               <div>
                 <div className="text-xs text-slate-500 mb-1">{t('store')}</div>
                 <div className="text-slate-300 text-sm">{detailCampaign.storeName}</div>
+                {detailCampaign.storeAddress && <div className="text-xs text-slate-500 mt-0.5">{detailCampaign.storeAddress}</div>}
                 {detailCampaign.redeemCode && <div className="text-xs text-slate-500 mt-0.5">{t('redeemCode')}: <span className="text-amber-400 font-mono">{detailCampaign.redeemCode}</span></div>}
               </div>
               <div>
