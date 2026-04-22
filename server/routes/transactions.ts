@@ -188,7 +188,7 @@ transactionsRoutes.post('/award', async (req: Request, res: Response) => {
     for (const userId of creatorIds) {
       const result = await query(`
         INSERT INTO transactions ("toId", amount, currency, type, description)
-        VALUES ($1, $2, 'twd', 'platform_reward', $3)
+        VALUES ($1, $2, 'twd', 'reward', $3)
         RETURNING id, "toId", amount, description
       `, [userId, amount, desc]);
       inserted.push(result.rows[0]);
