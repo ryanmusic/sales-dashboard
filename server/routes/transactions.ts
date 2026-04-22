@@ -192,13 +192,7 @@ transactionsRoutes.post('/award', async (req: Request, res: Response) => {
         RETURNING id, "toId", amount, description
       `, [userId, amount, desc]);
       inserted.push(result.rows[0]);
-
-      // Also credit their player-balance
-      await query(`
-        UPDATE "player-balance"
-        SET balance = balance + $1, totalincome = totalincome + $1
-        WHERE userid::text = $2 AND currency = 'twd'
-      `, [amount, userId]);
+      // player-balance is a view computed from transactions — no UPDATE needed
     }
 
     res.json({ success: true, count: inserted.length, transactions: inserted });
