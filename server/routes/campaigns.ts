@@ -337,14 +337,17 @@ campaignsRoutes.patch('/:campaignId/reservations/:reservationId', async (req: Re
       // If changing from a non-active status to active, check slots
       if (oldStatus === 'expired' || oldStatus === 'canceled' || oldStatus === 'rejected') {
         const campaign = await query(
-          `SELECT slots, "currentSlots" FROM "attention-cards" WHERE id = $1`,
+          `SELECT slots,
+            (SELECT COUNT(*) FROM "cc-slot-reservations" r
+             WHERE r."callCardId" = $1 AND r.status IN ('booked', 'used')) as "occupiedSlots"
+           FROM "attention-cards" WHERE id = $1`,
           [campaignId],
         );
         if (campaign.rows.length === 0) {
           return res.status(404).json({ error: 'Campaign not found' });
         }
-        const { currentSlots } = campaign.rows[0];
-        if (currentSlots <= 0) {
+        const remaining = (campaign.rows[0].slots || 0) - parseInt(campaign.rows[0].occupiedSlots || 0);
+        if (remaining <= 0) {
           return res.status(409).json({ error: 'No slots available' });
         }
       }
