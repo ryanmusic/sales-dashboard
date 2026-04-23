@@ -51,14 +51,7 @@ brandsRoutes.get('/all', async (_req, res) => {
           ORDER BY "createTimestamp" DESC
           LIMIT 1
         ) latest_deposit ON true
-        LEFT JOIN LATERAL (
-          SELECT
-            COALESCE(SUM(CASE WHEN type IN ('deposit','refund','indemnification','referral_reward') THEN amount ELSE 0 END), 0) as "totalincome",
-            COALESCE(SUM(CASE WHEN type IN ('deposit','refund','indemnification','referral_reward') THEN amount ELSE 0 END), 0)
-            - COALESCE(SUM(CASE WHEN type IN ('fund_cc','commission','withholding') THEN amount ELSE 0 END), 0) as balance
-          FROM transactions
-          WHERE ("toId"::text = u.id::text OR "fromId"::text = u.id::text) AND currency = 'twd'
-        ) bb ON true
+        LEFT JOIN LATERAL (SELECT NULL::numeric as "totalincome", NULL::numeric as balance) bb ON true
         WHERE 'brand' = ANY(u.roles)
           AND EXISTS (SELECT 1 FROM stores s WHERE s."brandId"::text = b.id::text AND s."deleteTimestamp" IS NULL)
         ORDER BY b."createTimestamp" DESC
@@ -98,14 +91,7 @@ brandsRoutes.get('/all', async (_req, res) => {
           JOIN users u ON cp."userId"::text = u.id::text
           JOIN user_brands ub ON ub."userId"::text = u.id::text AND ub.role = 'owner'
           JOIN brands b ON b.id = ub."brandId"
-          LEFT JOIN LATERAL (
-          SELECT
-            COALESCE(SUM(CASE WHEN type IN ('deposit','refund','indemnification','referral_reward') THEN amount ELSE 0 END), 0) as "totalincome",
-            COALESCE(SUM(CASE WHEN type IN ('deposit','refund','indemnification','referral_reward') THEN amount ELSE 0 END), 0)
-            - COALESCE(SUM(CASE WHEN type IN ('fund_cc','commission','withholding') THEN amount ELSE 0 END), 0) as balance
-          FROM transactions
-          WHERE ("toId"::text = u.id::text OR "fromId"::text = u.id::text) AND currency = 'twd'
-        ) bb ON true
+          LEFT JOIN LATERAL (SELECT NULL::numeric as "totalincome", NULL::numeric as balance) bb ON true
           WHERE cp."expiryDate" IS NOT NULL
             AND cp."expiryDate" >= NOW() - INTERVAL '30 days'
             AND cp."expiryDate" <= NOW() + INTERVAL '90 days'
@@ -130,14 +116,7 @@ brandsRoutes.get('/all', async (_req, res) => {
           ) dr ON true
           JOIN user_brands ub ON ub."userId"::text = u.id::text AND ub.role = 'owner'
           JOIN brands b ON b.id = ub."brandId"
-          LEFT JOIN LATERAL (
-          SELECT
-            COALESCE(SUM(CASE WHEN type IN ('deposit','refund','indemnification','referral_reward') THEN amount ELSE 0 END), 0) as "totalincome",
-            COALESCE(SUM(CASE WHEN type IN ('deposit','refund','indemnification','referral_reward') THEN amount ELSE 0 END), 0)
-            - COALESCE(SUM(CASE WHEN type IN ('fund_cc','commission','withholding') THEN amount ELSE 0 END), 0) as balance
-          FROM transactions
-          WHERE ("toId"::text = u.id::text OR "fromId"::text = u.id::text) AND currency = 'twd'
-        ) bb ON true
+          LEFT JOIN LATERAL (SELECT NULL::numeric as "totalincome", NULL::numeric as balance) bb ON true
           WHERE u."subscriptionLevel" IS NOT NULL AND u."subscriptionLevel" NOT IN ('free')
             AND (dr."createTimestamp" + (dr.every || ' months')::interval) >= NOW() - INTERVAL '30 days'
             AND (dr."createTimestamp" + (dr.every || ' months')::interval) <= NOW() + INTERVAL '90 days'
@@ -164,14 +143,7 @@ brandsRoutes.get('/all', async (_req, res) => {
         FROM users u
         JOIN user_brands ub ON ub."userId"::text = u.id::text AND ub.role = 'owner'
         JOIN brands b ON b.id = ub."brandId"
-        LEFT JOIN LATERAL (
-          SELECT
-            COALESCE(SUM(CASE WHEN type IN ('deposit','refund','indemnification','referral_reward') THEN amount ELSE 0 END), 0) as "totalincome",
-            COALESCE(SUM(CASE WHEN type IN ('deposit','refund','indemnification','referral_reward') THEN amount ELSE 0 END), 0)
-            - COALESCE(SUM(CASE WHEN type IN ('fund_cc','commission','withholding') THEN amount ELSE 0 END), 0) as balance
-          FROM transactions
-          WHERE ("toId"::text = u.id::text OR "fromId"::text = u.id::text) AND currency = 'twd'
-        ) bb ON true
+        LEFT JOIN LATERAL (SELECT NULL::numeric as "totalincome", NULL::numeric as balance) bb ON true
         WHERE EXISTS (SELECT 1 FROM stores s WHERE s."brandId"::text = b.id::text AND s."deleteTimestamp" IS NULL)
           AND u."updateTimestamp" IS NOT NULL
         ORDER BY u."updateTimestamp" ASC
@@ -266,14 +238,7 @@ brandsRoutes.get('/', async (req, res) => {
           ORDER BY "createTimestamp" DESC
           LIMIT 1
         ) latest_deposit ON true
-        LEFT JOIN LATERAL (
-          SELECT
-            COALESCE(SUM(CASE WHEN type IN ('deposit','refund','indemnification','referral_reward') THEN amount ELSE 0 END), 0) as "totalincome",
-            COALESCE(SUM(CASE WHEN type IN ('deposit','refund','indemnification','referral_reward') THEN amount ELSE 0 END), 0)
-            - COALESCE(SUM(CASE WHEN type IN ('fund_cc','commission','withholding') THEN amount ELSE 0 END), 0) as balance
-          FROM transactions
-          WHERE ("toId"::text = u.id::text OR "fromId"::text = u.id::text) AND currency = 'twd'
-        ) bb ON true
+        LEFT JOIN LATERAL (SELECT NULL::numeric as "totalincome", NULL::numeric as balance) bb ON true
         ${whereClause}
         ORDER BY u."createTimestamp" DESC
         LIMIT $1 OFFSET $2
