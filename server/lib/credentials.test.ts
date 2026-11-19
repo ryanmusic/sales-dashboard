@@ -116,3 +116,8 @@ test('env converter refuses a password bcrypt would truncate', async () => {
   await assert.rejects(convertEnv(`ADMIN_USER=admin\nADMIN_PASS=${'x'.repeat(73)}\n`), /longer than 72 bytes/);
   await assert.rejects(convertEnv(`USERS=op:${'y'.repeat(80)}:operator\n`), /longer than 72 bytes/);
 });
+
+test('env converter refuses multi-line values', async () => {
+  await assert.rejects(convertEnv('ADMIN_USER=admin\nADMIN_PASS="first-line\nsecond-line"\n'), /several lines/);
+  await assert.rejects(convertEnv('USERS="op:first-pass-1:operator,\nop2:second-pass-1:operator"\n'), /several lines/);
+});

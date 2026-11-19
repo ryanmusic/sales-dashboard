@@ -189,8 +189,11 @@ export interface EnvConversion {
 }
 
 // Same parser the server uses, so quotes, escapes and inline comments resolve identically.
-function envValue(line: string, key: string): string {
-  return dotenv.parse(line)[key] ?? '';
+function envValue(line: string, key: string, content: string): string {
+  const value = dotenv.parse(line)[key] ?? '';
+  // A multi-line quoted value would only be partly captured by the one-line match; refuse it.
+  if (value !== (dotenv.parse(content)[key] ?? '')) throw new Error(`${key} spans several lines; put it on one line first`);
+  return value;
 }
 
 /** Rewrites cleartext ADMIN_PASS -> ADMIN_PASS_HASH and cleartext USERS entries -> hashes (same passwords). */
@@ -218,9 +221,9 @@ export async function convertEnv(
   const adminPass = /^ADMIN_PASS=(.*)$/m.exec(content);
   if (adminPass) {
     if (/^ADMIN_PASS_HASH=/m.test(content)) throw new Error('both ADMIN_PASS and ADMIN_PASS_HASH are set; remove one by hand');
-    const value = envValue(adminPass[0], 'ADMIN_PASS');
+    const value = envValue(adminPass[0], 'ADMIN_PASS', content);
     if (!value) throw new Error('ADMIN_PASS is empty');
-    const user = adminUser ? envValue(adminUser[0], 'ADMIN_USER') : '';
+    const user = adminUser ? envValue(adminUser[0], 'ADMIN_USER', content) : '';
     if (!user) throw new Error('ADMIN_PASS is set without ADMIN_USER');
     const replacement = `ADMIN_PASS_HASH='${await hash(value)}'`;
     next = next.replace(adminPass[0], () => replacement);
@@ -230,7 +233,7 @@ export async function convertEnv(
 
   const users = /^USERS=(.*)$/m.exec(next);
   if (users) {
-    const value = envValue(users[0], 'USERS');
+    const value = envValue(users[0], 'USERS', content);
     let changed = false;
     const entries: string[] = [];
     for (const raw of value.split(',')) {
