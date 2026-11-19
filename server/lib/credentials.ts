@@ -97,7 +97,7 @@ export function loadAccounts(env: NodeJS.ProcessEnv = process.env): LoadedAccoun
       else secret(adminUser, 'admin', adminHash, 'ADMIN_PASS_HASH');
     } else if (adminLegacy) {
       cleartextUsers.push(adminUser);
-      errors.push('ADMIN_PASS holds a cleartext password; ignoring ADMIN_USER (convert with yarn admin:convert-env)');
+      errors.push(`ADMIN_PASS for ${adminUser} holds a cleartext password; ignoring it (convert with yarn admin:convert-env)`);
     } else {
       errors.push('ADMIN_USER is set without ADMIN_PASS_HASH; ignoring it');
     }
