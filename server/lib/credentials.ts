@@ -1,5 +1,3 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
-
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
@@ -16,9 +14,7 @@ const ROLES = new Set(['admin', 'operator']);
 export interface Account {
   username: string;
   role: string;
-  passwordHash?: string;
-  // Transition only: cleartext still in .env.
-  legacyPassword?: string;
+  passwordHash: string;
 }
 
 export interface LoadedAccounts {
@@ -54,6 +50,7 @@ export function hashPassword(password: string): Promise<string> {
 export function loadAccounts(env: NodeJS.ProcessEnv = process.env): LoadedAccounts {
   const accounts: Account[] = [];
   const errors: string[] = [];
+  const cleartextUsers: string[] = [];
   const add = (account: Account) => {
     if (accounts.some((a) => a.username === account.username)) {
       errors.push(`user ${account.username} is configured more than once; ignoring the duplicate`);
@@ -69,7 +66,8 @@ export function loadAccounts(env: NodeJS.ProcessEnv = process.env): LoadedAccoun
       }
       add({ username, role, passwordHash: value });
     } else {
-      add({ username, role, legacyPassword: value });
+      cleartextUsers.push(username);
+      errors.push(`${source} for ${username} holds a cleartext password; ignoring it (convert with yarn admin:convert-env)`);
     }
   };
 
@@ -98,19 +96,14 @@ export function loadAccounts(env: NodeJS.ProcessEnv = process.env): LoadedAccoun
       if (!looksLikeBcrypt(adminHash)) errors.push('ADMIN_PASS_HASH is not a bcrypt hash; ignoring ADMIN_USER');
       else secret(adminUser, 'admin', adminHash, 'ADMIN_PASS_HASH');
     } else if (adminLegacy) {
-      add({ username: adminUser, role: 'admin', legacyPassword: adminLegacy });
+      cleartextUsers.push(adminUser);
+      errors.push(`ADMIN_PASS for ${adminUser} holds a cleartext password; ignoring it (convert with yarn admin:convert-env)`);
     } else {
       errors.push('ADMIN_USER is set without ADMIN_PASS_HASH; ignoring it');
     }
   }
 
-  const cleartextUsers = accounts.filter((a) => a.legacyPassword !== undefined).map((a) => a.username);
   return { accounts, errors, cleartextUsers };
-}
-
-function constantTimeEquals(a: string, b: string): boolean {
-  const digest = (s: string) => createHash('sha256').update(s, 'utf8').digest();
-  return timingSafeEqual(digest(a), digest(b));
 }
 
 let dummyHash: Promise<string> | undefined;
@@ -125,12 +118,7 @@ export async function verifyAccount(accounts: Account[], username: unknown, pass
     await bcrypt.compare(candidate || 'x', await dummyHash);
     return null;
   }
-  if (account.passwordHash) return (await bcrypt.compare(candidate, account.passwordHash)) ? account : null;
-  // Legacy accounts pay the same bcrypt cost so they can't be told apart by timing.
-  dummyHash ??= hashPassword('not-a-real-account-password');
-  await bcrypt.compare(candidate, await dummyHash);
-  const ok = constantTimeEquals(candidate, account.legacyPassword ?? '');
-  return ok ? account : null;
+  return (await bcrypt.compare(candidate, account.passwordHash)) ? account : null;
 }
 
 const WINDOW_MS = 10 * 60 * 1000;
