@@ -125,9 +125,11 @@ export async function verifyAccount(accounts: Account[], username: unknown, pass
     await bcrypt.compare(candidate || 'x', await dummyHash);
     return null;
   }
-  const ok = account.passwordHash
-    ? await bcrypt.compare(candidate, account.passwordHash)
-    : constantTimeEquals(candidate, account.legacyPassword ?? '');
+  if (account.passwordHash) return (await bcrypt.compare(candidate, account.passwordHash)) ? account : null;
+  // Legacy accounts pay the same bcrypt cost so they can't be told apart by timing.
+  dummyHash ??= hashPassword('not-a-real-account-password');
+  await bcrypt.compare(candidate, await dummyHash);
+  const ok = constantTimeEquals(candidate, account.legacyPassword ?? '');
   return ok ? account : null;
 }
 
@@ -194,8 +196,15 @@ function envValue(line: string, key: string): string {
 /** Rewrites cleartext ADMIN_PASS -> ADMIN_PASS_HASH and cleartext USERS entries -> hashes (same passwords). */
 export async function convertEnv(
   content: string,
-  hash: (pw: string) => Promise<string> = hashPassword,
+  hashFn: (pw: string) => Promise<string> = hashPassword,
 ): Promise<EnvConversion> {
+  const hash = (pw: string) => {
+    // bcrypt would silently accept anything sharing the first 72 bytes
+    if (Buffer.byteLength(pw, 'utf8') > PASSWORD_MAX_BYTES) {
+      throw new Error(`a password is longer than ${PASSWORD_MAX_BYTES} bytes; set a new one with yarn hash-password`);
+    }
+    return hashFn(pw);
+  };
   const converted: string[] = [];
   const cleartextByUser = new Map<string, string>();
   let next = content;

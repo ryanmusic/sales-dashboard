@@ -42,9 +42,10 @@ export async function login(req: Request, res: Response) {
     console.warn(`[auth] login rate-limited user=${forLog(username)} ip=${req.ip}`);
     return res.status(429).json({ error: 'Too many failed attempts, try again in 10 minutes' });
   }
+  // Counted before the bcrypt await so a concurrent burst can't slip past the limit; cleared on success.
+  limiter.recordFailure(username);
   const account = await verifyAccount((loaded ?? initAuth()).accounts, username, password);
   if (!account) {
-    limiter.recordFailure(username);
     console.warn(`[auth] login failed user=${forLog(username)} ip=${req.ip}`);
     return res.status(401).json({ error: 'Invalid credentials' });
   }

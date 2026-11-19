@@ -111,3 +111,8 @@ test('env converter reads values with dotenv semantics', async () => {
   const out = await convertEnv('ADMIN_USER=admin\nADMIN_PASS=plain-pass-123 # comment\n');
   assert.equal(out.cleartextByUser.get('admin'), 'plain-pass-123');
 });
+
+test('env converter refuses a password bcrypt would truncate', async () => {
+  await assert.rejects(convertEnv(`ADMIN_USER=admin\nADMIN_PASS=${'x'.repeat(73)}\n`), /longer than 72 bytes/);
+  await assert.rejects(convertEnv(`USERS=op:${'y'.repeat(80)}:operator\n`), /longer than 72 bytes/);
+});
