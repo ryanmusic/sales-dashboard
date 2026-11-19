@@ -26,11 +26,12 @@ const SUBSCRIPTION_LEVELS = [
 
 export default function CreateAccount() {
   const { t, lang } = useI18n();
+  // No prefilled password: a shared default lets anyone sign in to accounts created with it.
   const [form, setForm] = useState({
     fullName: '',
     email: '',
     phoneNumber: '',
-    password: 'tellit2024',
+    password: '',
     brandName: '',
     storeName: '',
     subscriptionLevel: 'free',
@@ -80,7 +81,7 @@ export default function CreateAccount() {
         fullName: '',
         email: '',
         phoneNumber: '',
-        password: 'tellit2024',
+        password: '',
         brandName: '',
         storeName: '',
         subscriptionLevel: 'free',
