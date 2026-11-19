@@ -5,7 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { login, authMiddleware } from './auth.js';
+import { login, authMiddleware, initAuth } from './auth.js';
 import { dashboardRoutes } from './routes/dashboard.js';
 import { revenueRoutes } from './routes/revenue.js';
 import { brandsRoutes } from './routes/brands.js';
@@ -15,7 +15,11 @@ import { usersRoutes } from './routes/users.js';
 import { vipRoutes } from './routes/vip.js';
 import { transactionsRoutes } from './routes/transactions.js';
 
+initAuth();
+
 const app = express();
+// nginx on the same box sets X-Forwarded-For; trust only loopback so req.ip in login logs is the client.
+app.set('trust proxy', 'loopback');
 const PORT = process.env.PORT || 3101;
 
 app.use(cors());
