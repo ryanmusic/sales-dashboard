@@ -16,12 +16,6 @@ export function initAuth(): LoadedAccounts {
   getSecret();
   loaded = loadAccounts();
   for (const error of loaded.errors) console.error(`[auth] ${error}`);
-  if (loaded.cleartextUsers.length > 0) {
-    console.warn(
-      `[auth] cleartext passwords in .env for: ${loaded.cleartextUsers.join(', ')}. ` +
-        'Convert with `yarn admin:convert-env`; cleartext stops working in the next release.',
-    );
-  }
   if (loaded.accounts.length === 0) console.error('[auth] no login accounts configured; every login will fail');
   return loaded;
 }

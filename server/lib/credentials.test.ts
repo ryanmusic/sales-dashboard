@@ -44,11 +44,13 @@ test('rejects weak or malformed hashes and ambiguous admin config', async () => 
   assert.equal(loadAccounts({ USERS: `x:${await hashP}:superuser` }).accounts.length, 0);
 });
 
-test('legacy cleartext still verifies during the transition and is reported', async () => {
+test('cleartext passwords are rejected and reported', async () => {
   const loaded = loadAccounts({ ADMIN_USER: 'admin', ADMIN_PASS: PW, USERS: 'op1:op-pass-123456:operator' });
+  assert.deepEqual(loaded.accounts, []);
   assert.deepEqual(loaded.cleartextUsers, ['op1', 'admin']);
-  assert.equal((await verifyAccount(loaded.accounts, 'admin', PW))?.username, 'admin');
-  assert.equal(await verifyAccount(loaded.accounts, 'admin', `${PW}!`), null);
+  assert.ok(loaded.errors.every((e) => !e.includes(PW) && !e.includes('op-pass-123456')));
+  assert.equal(await verifyAccount(loaded.accounts, 'admin', PW), null);
+  assert.equal(await verifyAccount(loaded.accounts, 'op1', 'op-pass-123456'), null);
 });
 
 test('login limiter blocks a username after 10 failures and resets after the window', () => {
