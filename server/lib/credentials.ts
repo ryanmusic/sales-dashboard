@@ -1,8 +1,11 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
 
 export const PASSWORD_BCRYPT_COST = 12;
+// Upper bound so a bad env value can't turn every login into seconds of CPU.
+export const PASSWORD_BCRYPT_MAX_COST = 16;
 export const PASSWORD_MIN_LENGTH = 12;
 // bcrypt ignores input past 72 bytes
 export const PASSWORD_MAX_BYTES = 72;
@@ -26,7 +29,7 @@ export interface LoadedAccounts {
 
 export function isValidPasswordHash(hash: unknown): hash is string {
   const m = typeof hash === 'string' ? BCRYPT_HASH_RE.exec(hash) : null;
-  return !!m && Number(m[1]) >= PASSWORD_BCRYPT_COST;
+  return !!m && Number(m[1]) >= PASSWORD_BCRYPT_COST && Number(m[1]) <= PASSWORD_BCRYPT_MAX_COST;
 }
 
 export function looksLikeBcrypt(value: string): boolean {
@@ -129,6 +132,7 @@ export async function verifyAccount(accounts: Account[], username: unknown, pass
 }
 
 const WINDOW_MS = 10 * 60 * 1000;
+const MAX_TRACKED = 10_000;
 
 /** In-memory failed-login counter per username (single process). */
 export class LoginLimiter {
@@ -142,7 +146,11 @@ export class LoginLimiter {
 
   isBlocked(username: string): boolean {
     const entry = this.failures.get(this.key(username));
-    if (!entry) return false;
+    // Table full of live buckets means a username flood; fail closed until they expire.
+    if (!entry) {
+      if (this.failures.size >= MAX_TRACKED) this.prune();
+      return this.failures.size >= MAX_TRACKED;
+    }
     if (entry.resetAt <= this.now()) {
       this.failures.delete(this.key(username));
       return false;
@@ -153,9 +161,18 @@ export class LoginLimiter {
   recordFailure(username: string): void {
     const key = this.key(username);
     const entry = this.failures.get(key);
-    if (!entry || entry.resetAt <= this.now()) this.failures.set(key, { count: 1, resetAt: this.now() + WINDOW_MS });
-    else entry.count += 1;
-    if (this.failures.size > 10_000) this.failures.clear();
+    if (entry && entry.resetAt > this.now()) {
+      entry.count += 1;
+      return;
+    }
+    if (this.failures.size >= MAX_TRACKED) this.prune();
+    // Never evict a live bucket: a flood of fresh usernames must not reset the one being guessed.
+    if (this.failures.size < MAX_TRACKED) this.failures.set(key, { count: 1, resetAt: this.now() + WINDOW_MS });
+  }
+
+  private prune(): void {
+    const now = this.now();
+    for (const [key, entry] of this.failures) if (entry.resetAt <= now) this.failures.delete(key);
   }
 
   reset(username: string): void {
@@ -169,10 +186,9 @@ export interface EnvConversion {
   cleartextByUser: Map<string, string>;
 }
 
-function unquote(raw: string): { value: string; quoted: boolean } {
-  const v = raw.trim();
-  const quoted = v.length >= 2 && (v[0] === "'" || v[0] === '"') && v.at(-1) === v[0];
-  return { value: quoted ? v.slice(1, -1) : v, quoted };
+// Same parser the server uses, so quotes, escapes and inline comments resolve identically.
+function envValue(line: string, key: string): string {
+  return dotenv.parse(line)[key] ?? '';
 }
 
 /** Rewrites cleartext ADMIN_PASS -> ADMIN_PASS_HASH and cleartext USERS entries -> hashes (same passwords). */
@@ -193,9 +209,9 @@ export async function convertEnv(
   const adminPass = /^ADMIN_PASS=(.*)$/m.exec(content);
   if (adminPass) {
     if (/^ADMIN_PASS_HASH=/m.test(content)) throw new Error('both ADMIN_PASS and ADMIN_PASS_HASH are set; remove one by hand');
-    const { value } = unquote(adminPass[1]);
+    const value = envValue(adminPass[0], 'ADMIN_PASS');
     if (!value) throw new Error('ADMIN_PASS is empty');
-    const user = adminUser ? unquote(adminUser[1]).value : '';
+    const user = adminUser ? envValue(adminUser[0], 'ADMIN_USER') : '';
     if (!user) throw new Error('ADMIN_PASS is set without ADMIN_USER');
     const replacement = `ADMIN_PASS_HASH='${await hash(value)}'`;
     next = next.replace(adminPass[0], () => replacement);
@@ -205,7 +221,7 @@ export async function convertEnv(
 
   const users = /^USERS=(.*)$/m.exec(next);
   if (users) {
-    const { value } = unquote(users[1]);
+    const value = envValue(users[0], 'USERS');
     let changed = false;
     const entries: string[] = [];
     for (const raw of value.split(',')) {

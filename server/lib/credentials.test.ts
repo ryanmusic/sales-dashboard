@@ -92,3 +92,22 @@ test('env converter is a no-op once converted and refuses ambiguous files', asyn
   await assert.rejects(convertEnv('ADMIN_USER=a\nADMIN_PASS=a\nADMIN_PASS=b\n'), /2 times/);
   await assert.rejects(convertEnv('ADMIN_PASS=a\n'), /without ADMIN_USER/);
 });
+
+test('rejects out-of-range bcrypt costs', () => {
+  const fake = (cost: string) => `$2b$${cost}$${'a'.repeat(53)}`;
+  assert.equal(loadAccounts({ ADMIN_USER: 'admin', ADMIN_PASS_HASH: fake('31') }).accounts.length, 0);
+  assert.equal(loadAccounts({ USERS: `op:${fake('99')}:operator` }).accounts.length, 0);
+});
+
+test('a flood of new usernames cannot reset a live bucket', () => {
+  const limiter = new LoginLimiter(10, () => 0);
+  for (let i = 0; i < 10; i++) limiter.recordFailure('admin');
+  for (let i = 0; i < 10_050; i++) limiter.recordFailure(`spray-${i}`);
+  assert.equal(limiter.isBlocked('admin'), true);
+  assert.equal(limiter.isBlocked('never-seen'), true);
+});
+
+test('env converter reads values with dotenv semantics', async () => {
+  const out = await convertEnv('ADMIN_USER=admin\nADMIN_PASS=plain-pass-123 # comment\n');
+  assert.equal(out.cleartextByUser.get('admin'), 'plain-pass-123');
+});
