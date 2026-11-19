@@ -8,7 +8,10 @@
     "dev:client": "vite",
     "dev:server": "tsx watch server/index.ts",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx --test server/lib/*.test.ts",
+    "hash-password": "tsx scripts/hash-password.ts",
+    "admin:convert-env": "tsx scripts/convert-env.ts"
   },
   "dependencies": {
     "@types/bcryptjs": "^3.0.0",

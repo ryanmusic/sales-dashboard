@@ -1,33 +1,57 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-function getSecret() { return process.env.JWT_SECRET || 'tellit-dashboard-secret-change-me'; }
+import { LoginLimiter, loadAccounts, verifyAccount, type LoadedAccounts } from './lib/credentials.js';
 
-// Users: env-based for now. USERS format: "user1:pass1:role,user2:pass2:role"
-// Roles: admin (full access), operator (no revenue/profit data)
-function getUsers(): Array<{ username: string; password: string; role: string }> {
-  const usersEnv = process.env.USERS;
-  if (usersEnv) {
-    return usersEnv.split(',').map((u) => {
-      const [username, password, role] = u.trim().split(':');
-      return { username, password, role: role || 'operator' };
-    });
-  }
-  // Fallback to legacy single admin
-  return [
-    { username: process.env.ADMIN_USER || 'admin', password: process.env.ADMIN_PASS || 'admin', role: 'admin' },
-  ];
+// Read lazily: ESM evaluates this module before index.ts calls dotenv.config().
+function getSecret(): string {
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET env var is required');
+  return process.env.JWT_SECRET;
 }
 
-export function login(req: Request, res: Response) {
-  const { username, password } = req.body;
-  const users = getUsers();
-  const user = users.find((u) => u.username === username && u.password === password);
-  if (user) {
-    const token = jwt.sign({ user: user.username, role: user.role }, getSecret(), { expiresIn: '7d' });
-    return res.json({ token, role: user.role });
+let loaded: LoadedAccounts | undefined;
+
+/** Called once at startup (after dotenv) so config problems show in the boot log. */
+export function initAuth(): LoadedAccounts {
+  getSecret();
+  loaded = loadAccounts();
+  for (const error of loaded.errors) console.error(`[auth] ${error}`);
+  if (loaded.cleartextUsers.length > 0) {
+    console.warn(
+      `[auth] cleartext passwords in .env for: ${loaded.cleartextUsers.join(', ')}. ` +
+        'Convert with `yarn admin:convert-env`; cleartext stops working in the next release.',
+    );
   }
-  res.status(401).json({ error: 'Invalid credentials' });
+  if (loaded.accounts.length === 0) console.error('[auth] no login accounts configured; every login will fail');
+  return loaded;
+}
+
+const limiter = new LoginLimiter();
+
+function forLog(value: unknown): string {
+  return String(value ?? '').replace(/[\r\n\t]/g, ' ').slice(0, 254);
+}
+
+// Roles: admin (full access), operator (no revenue/profit data)
+export async function login(req: Request, res: Response) {
+  const { username, password } = req.body || {};
+  if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
+    return res.status(400).json({ error: 'username and password required' });
+  }
+  if (limiter.isBlocked(username)) {
+    console.warn(`[auth] login rate-limited user=${forLog(username)} ip=${req.ip}`);
+    return res.status(429).json({ error: 'Too many failed attempts, try again in 10 minutes' });
+  }
+  // Counted before the bcrypt await so a concurrent burst can't slip past the limit; cleared on success.
+  limiter.recordFailure(username);
+  const account = await verifyAccount((loaded ?? initAuth()).accounts, username, password);
+  if (!account) {
+    console.warn(`[auth] login failed user=${forLog(username)} ip=${req.ip}`);
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  limiter.reset(username);
+  const token = jwt.sign({ user: account.username, role: account.role }, getSecret(), { expiresIn: '7d' });
+  return res.json({ token, role: account.role });
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
